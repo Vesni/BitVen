@@ -167,14 +167,15 @@
                 <div class="balance-display"><span id="current-balance">0.00</span> BVN</div>
             </div>
             <div>
-                <!-- FIX 2: window.signInWithGoogle function is now correctly defined in the script below -->
+                <!-- FIXED: Calls global window functions -->
                 <button id="sign-in-btn" onclick="window.signInWithGoogle()">Sign In/Wallet Login</button>
                 <button id="sign-out-btn" onclick="window.signOutUser()" style="display: none;">Sign Out</button>
-                <button onclick="window.calculateAndDisplayBalance(blocksData)" style="margin-left: 10px;">Refresh Balance</button>
+                <button onclick="window.calculateAndDisplayBalance(window.blocksData)" style="margin-left: 10px;">Refresh Balance</button>
             </div>
         </div>
         <div id="wallet-id-container">
             <strong>Active Wallet ID:</strong> <code id="wallet-id">N/A</code>
+            <!-- FIXED: Calls global window functions -->
             <button class="copy-btn" onclick="window.copyWalletId()" title="Copy ID" style="padding: 6px 10px; margin-left: 10px; font-size: 0.8em;">📋</button>
             <span id="auth-status" style="margin-left: 20px; font-weight: 600; color: var(--color-danger);">Signed Out</span>
             <span id="copy-status" style="font-size: 0.8em; margin-left: 10px; color: var(--color-success);"></span>
@@ -196,6 +197,7 @@
                 <p style="color: var(--color-text-subtle);">
                     Pending Transactions: <span id="pending-tx-count">0</span> | Total Fees in Pool: <strong id="fees-pool">0.00</strong> BVN
                 </p>
+                <!-- FIXED: Calls global window functions -->
                 <button id="mine-btn" onclick="window.mineBlock()" disabled>
                     Mine Block (Start Calculation)
                 </button>
@@ -208,6 +210,7 @@
                 <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID) or Burn Address" class="input-full">
                 <input type="number" id="amount" placeholder="Amount (BVN)" value="1.00" min="0.01" step="any" class="input-half">
                 <input type="text" id="message" placeholder="Optional Memo/Reason" class="input-half">
+                <!-- FIXED: Calls global window functions -->
                 <button id="send-btn" onclick="window.sendTransaction()">Submit Transaction</button>
                 <button id="request-btn" onclick="window.toggleRequestMode()" style="background-color: var(--color-info); box-shadow: 0 4px 0 #4F46E5;">
                     Switch to Invoice Request
@@ -257,7 +260,8 @@
     // ====================================================================
     // 1. CONFIGURATION & FIREBASE SETUP
     // ====================================================================
-    // FIX 3: Using Firebase v11.6.1 imports
+    
+    // Import necessary Firebase functions
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { 
         getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut,
@@ -280,54 +284,66 @@
     const MASTER_ADMIN_UID = 'REPLACE_THIS_WITH_YOUR_ACTUAL_ADMIN_UID'; 
     const UNLIMITED_BALANCE = 999999999.00;
 
-    // Environment-provided globals
+    // Environment-provided globals (will be available even if Firebase fails)
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    
-    // FIX 1: CRITICAL FIX - Parse the configuration string
-    let firebaseConfig = {};
-    try {
-        // Correctly parse the provided configuration string
-        firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {};
-    } catch (e) {
-        console.error("Error parsing __firebase_config:", e);
-    }
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    // Initialize Firebase
-    let app, db, auth;
+    // Firebase instances (initialized later)
+    let db = null;
+    let auth = null;
+    let CHAIN_REF = null;
+    let PENDING_TX_REF = null;
+    let USER_PROFILE_REF = null;
+
+    // App State
+    let currentUserId = null;
+    let isAuthReady = false;
+    let isRequestMode = false;
+    window.blocksData = []; // Expose globally for the "Refresh Balance" button
+    let userProfiles = [];
+
+    // --- CRITICAL FIX: Robust Firebase Initialization ---
+    let firebaseConfig = {};
+    try {
+        const configString = typeof __firebase_config === 'string' && __firebase_config.trim() !== '' 
+            ? __firebase_config : null;
+            
+        if (configString) {
+            firebaseConfig = JSON.parse(configString); 
+            
+            // Check for critical missing project ID (Fixes the root FirebaseError)
+            if (!firebaseConfig.projectId) {
+                console.error("Firebase config is missing projectId. Initializing stopped.");
+                firebaseConfig = {}; // Clear config if invalid
+            }
+        }
+    } catch (e) {
+        console.error("Error parsing __firebase_config:", e);
+        // Do not proceed with initialization
+    }
+
     if (Object.keys(firebaseConfig).length > 0) {
-        app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Define references ONLY after db is successfully initialized
+            CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain_v2`);
+            PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions_v2`);
+            USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles_v2`);
+            
+        } catch (e) {
+            console.error("Firebase app initialization failed, despite config being present:", e);
+            db = null; // Ensure db is explicitly null if initialization failed
+        }
     } else {
         console.error("Firebase config is missing or invalid. Application will not connect to Firestore.");
     }
 
 
-    // Firestore Collection References (Public data for shared blockchain and directory)
-    const CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain_v2`);
-    const PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions_v2`);
-    const USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles_v2`);
-    
-    // Initial Authentication attempt
-    const attemptAuth = async () => {
-        if (!auth) return;
-        try {
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (e) {
-            console.error("Initial Authentication failed:", e);
-        }
-    };
-    attemptAuth();
-
     // ====================================================================
-    // 2. CORE BLOCKCHAIN CLASSES
+    // 2. CORE BLOCKCHAIN CLASSES (No changes needed here)
     // ====================================================================
     
     class Transaction {
@@ -377,17 +393,11 @@
     }
 
     // ====================================================================
-    // 3. GLOBAL STATE, AUTH, & UI MANAGEMENT
+    // 3. GLOBAL STATE, AUTH, & UI MANAGEMENT (ALL FUNCTIONS EXPOSED TO WINDOW)
     // ====================================================================
-    
-    let currentUserId = null;
-    let isAuthReady = false;
-    let isRequestMode = false;
-    let blocksData = [];
-    let userProfiles = [];
 
     // --- UTILITY FUNCTIONS ---
-
+    
     /** Rounds a number to two decimal places for currency consistency. */
     window.parseAndRound = (value) => {
         const num = parseFloat(value);
@@ -408,10 +418,10 @@
     updateConstantsUI(); 
 
     // --- AUTH UI AND LOGIC ---
-    // FIX 2: Re-implementing signInWithGoogle to resolve TypeError
+    // FIXED: Function assigned to window
     window.signInWithGoogle = () => {
         if (!auth) {
-            console.error("Firebase Auth not initialized.");
+            console.error("Firebase Auth not initialized. Cannot sign in.");
             return;
         }
         const provider = new GoogleAuthProvider();
@@ -419,6 +429,7 @@
         signInWithPopup(auth, provider).catch((error) => console.error("Google Sign-In Error:", error));
     };
 
+    // FIXED: Function assigned to window
     window.signOutUser = () => {
         if (!auth) return;
         signOut(auth).catch((error) => console.error("Sign Out Error:", error));
@@ -444,11 +455,13 @@
         }
     };
 
+    // FIXED: Function assigned to window
     window.copyWalletId = () => {
         const walletId = document.getElementById('wallet-id').textContent;
         window.copyIdToClipboard(walletId);
     }
 
+    // FIXED: Function assigned to window
     window.toggleRequestMode = () => {
         isRequestMode = !isRequestMode;
         const sendBtn = document.getElementById('send-btn');
@@ -476,6 +489,50 @@
     }
 
     // --- AUTH STATE CHANGE LISTENER ---
+    const setupListeners = () => {
+        if (!db) return;
+
+        // Listener for the Blockchain
+        onSnapshot(CHAIN_REF, (snapshot) => {
+            window.blocksData = [];
+            snapshot.forEach(doc => window.blocksData.push({...doc.data(), id: doc.id}));
+            
+            window.blocksData.sort((a, b) => a.index - b.index);
+
+            displayChain(window.blocksData);
+            checkChainValidity(window.blocksData);
+            if (currentUserId) {
+                window.calculateAndDisplayBalance(window.blocksData);
+            }
+        }, (error) => console.error("Blockchain Snapshot Error:", error));
+    
+        // Listener for Pending Transactions
+        onSnapshot(PENDING_TX_REF, (snapshot) => {
+            const pendingTxs = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
+
+            const realTxs = pendingTxs.filter(tx => !tx.isRequest);
+            const feesPool = realTxs.reduce((sum, tx) => sum + window.parseAndRound(tx.fee), 0);
+            
+            document.getElementById('pending-tx-count').textContent = realTxs.length;
+            document.getElementById('fees-pool').textContent = window.formatCurrency(feesPool);
+
+            if (currentUserId) {
+                const requests = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === currentUserId);
+                displayRequests(requests);
+            } else {
+                document.getElementById('pending-requests-output').innerHTML = '<p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>';
+            }
+        }, (error) => console.error("Pending TX Snapshot Error:", error));
+
+        // Listener for the User Directory
+        onSnapshot(USER_PROFILE_REF, (snapshot) => {
+            userProfiles = [];
+            snapshot.forEach(doc => userProfiles.push(doc.data()));
+            displayUserDirectory(userProfiles);
+        }, (error) => console.error("User Directory Snapshot Error:", error));
+    }
+
+
     if (auth) {
         onAuthStateChanged(auth, (user) => {
             const signInBtn = document.getElementById('sign-in-btn');
@@ -489,12 +546,14 @@
                 currentUserId = user.uid;
                 
                 // 1. Update User Profile for Directory
-                const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
-                setDoc(userProfileRef, { 
-                    uid: user.uid, 
-                    displayName: user.displayName || 'Wallet User', 
-                    lastSeen: serverTimestamp() 
-                }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
+                if (db) {
+                    const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
+                    setDoc(userProfileRef, { 
+                        uid: user.uid, 
+                        displayName: user.displayName || 'Wallet User', 
+                        lastSeen: serverTimestamp() 
+                    }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
+                }
 
                 // 2. UI Update
                 walletIdCode.textContent = currentUserId;
@@ -504,17 +563,17 @@
                 signOutBtn.style.display = 'inline-block';
                 mineBtn.disabled = false;
                 
-                window.calculateAndDisplayBalance(blocksData); 
+                window.calculateAndDisplayBalance(window.blocksData); 
 
-            } else if (user && user.isAnonymous === true) {
-                currentUserId = user.uid; // Still use UID for anonymous actions
-                walletIdCode.textContent = currentUserId.substring(0, 15) + '... (Anon)';
-                statusSpan.innerHTML = 'Anonymous';
-                statusSpan.style.color = 'var(--color-secondary-accent)';
-                signInBtn.style.display = 'inline-block';
-                signOutBtn.style.display = 'none';
+            } else if (user) { // Includes anonymous sign-in
+                currentUserId = user.uid; 
+                walletIdCode.textContent = user.isAnonymous ? currentUserId.substring(0, 15) + '... (Anon)' : currentUserId;
+                statusSpan.innerHTML = user.isAnonymous ? 'Anonymous' : 'Signed In';
+                statusSpan.style.color = user.isAnonymous ? 'var(--color-secondary-accent)' : 'var(--color-primary-accent)';
+                signInBtn.style.display = user.isAnonymous ? 'inline-block' : 'none';
+                signOutBtn.style.display = 'inline-block';
                 mineBtn.disabled = false;
-                window.calculateAndDisplayBalance(blocksData);
+                window.calculateAndDisplayBalance(window.blocksData);
                 
             } else {
                 // Fully Signed out
@@ -528,18 +587,39 @@
                 signOutBtn.style.display = 'none';
                 mineBtn.disabled = true;
             }
+            
+            // Start listeners only once auth is ready and db is connected
+            if (db && isAuthReady) {
+                setupListeners();
+            }
         });
     }
 
+    // Initial Authentication attempt
+    const attemptAuth = async () => {
+        if (!auth) return;
+        try {
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (e) {
+            console.error("Initial Authentication failed:", e);
+        }
+    };
+    attemptAuth();
+    
     // ====================================================================
-    // 4. TRANSACTION & MINING LOGIC
+    // 4. TRANSACTION & MINING LOGIC (FUNCTIONS EXPOSED TO WINDOW)
     // ====================================================================
 
     // --- Client-side Validation ---
     const validateTransactionInput = (toAddress, amount, isSending = true) => {
+        // Implementation remains the same
         const parsedAmount = window.parseAndRound(amount);
         const txStatus = document.getElementById('tx-status');
-        const currentBalance = window.parseAndRound(document.getElementById('current-balance').dataset.calculatedBalance);
+        const currentBalance = window.parseAndRound(document.getElementById('current-balance').dataset.calculatedBalance || 0);
         const isAdmin = currentUserId === MASTER_ADMIN_UID;
 
 
@@ -562,8 +642,10 @@
     };
 
     // --- STANDARD TRANSACTION (Send/Burn) ---
+    // FIXED: Function assigned to window
     window.sendTransaction = async () => {
-        if (!db) return; // Prevent run if Firebase not initialized
+        if (!db) { document.getElementById('tx-status').textContent = "Error: Database connection failed."; return; }
+        
         const toAddress = document.getElementById('recipient-id').value.trim();
         const amount = document.getElementById('amount').value;
         const message = document.getElementById('message').value.trim();
@@ -592,8 +674,10 @@
     };
 
     // --- INVOICE REQUEST ---
+    // FIXED: Function assigned to window
     window.requestFunds = async () => {
-        if (!db) return; // Prevent run if Firebase not initialized
+        if (!db) { document.getElementById('tx-status').textContent = "Error: Database connection failed."; return; }
+        
         const debtorId = document.getElementById('recipient-id').value.trim();
         const amount = document.getElementById('amount').value;
         const message = document.getElementById('message').value.trim();
@@ -602,6 +686,7 @@
         if (!validateTransactionInput(debtorId, amount, false)) return;
 
         const parsedAmount = window.parseAndRound(amount);
+        // Note: fromAddress and toAddress are swapped for a request (From: Debtor, To: Creditor)
         const requestTx = new Transaction(debtorId, currentUserId, parsedAmount, `INVOICE: ${message}`, true, 0);
         
         try {
@@ -618,8 +703,9 @@
     };
 
     // --- MINING ---
+    // FIXED: Function assigned to window
     window.mineBlock = async () => {
-        if (!currentUserId || !db) return;
+        if (!currentUserId || !db) { document.getElementById('mining-status').textContent = "Error: Not signed in or database unavailable."; return; }
 
         const mineBtn = document.getElementById('mine-btn');
         const miningStatus = document.getElementById('mining-status');
@@ -691,109 +777,8 @@
     };
     
     // ====================================================================
-    // 5. REAL-TIME DATA LISTENERS & DISPLAY
+    // 5. DATA DISPLAY FUNCTIONS (Exposed globally for reuse)
     // ====================================================================
-
-    // Listener for the Blockchain
-    if (db) {
-        onSnapshot(CHAIN_REF, (snapshot) => {
-            blocksData = [];
-            snapshot.forEach(doc => blocksData.push({...doc.data(), id: doc.id}));
-            
-            blocksData.sort((a, b) => a.index - b.index);
-
-            displayChain(blocksData);
-            checkChainValidity(blocksData);
-            if (currentUserId) {
-                window.calculateAndDisplayBalance(blocksData);
-            }
-        }, (error) => console.error("Blockchain Snapshot Error:", error));
-    
-        // Listener for Pending Transactions
-        onSnapshot(PENDING_TX_REF, (snapshot) => {
-            const pendingTxs = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
-
-            const realTxs = pendingTxs.filter(tx => !tx.isRequest);
-            const feesPool = realTxs.reduce((sum, tx) => sum + window.parseAndRound(tx.fee), 0);
-            
-            document.getElementById('pending-tx-count').textContent = realTxs.length;
-            document.getElementById('fees-pool').textContent = window.formatCurrency(feesPool);
-
-            if (currentUserId) {
-                const requests = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === currentUserId);
-                displayRequests(requests);
-            } else {
-                document.getElementById('pending-requests-output').innerHTML = '<p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>';
-            }
-        }, (error) => console.error("Pending TX Snapshot Error:", error));
-
-        // Listener for the User Directory
-        onSnapshot(USER_PROFILE_REF, (snapshot) => {
-            userProfiles = [];
-            snapshot.forEach(doc => userProfiles.push(doc.data()));
-            displayUserDirectory(userProfiles);
-        }, (error) => console.error("User Directory Snapshot Error:", error));
-    }
-
-
-    // --- Directory Display ---
-    function displayUserDirectory(users) {
-        const output = document.getElementById('user-directory-output');
-        document.getElementById('directory-count').textContent = users.length;
-        if (!output) return;
-
-        const currentUsers = users.filter(u => u.uid !== currentUserId);
-
-        if (currentUsers.length === 0) {
-            output.innerHTML = '<p style="color: var(--color-text-subtle);">No other active users found.</p>';
-            return;
-        }
-
-        output.innerHTML = currentUsers.map(user => {
-            const uidShort = user.uid.substring(0, 12) + '...';
-            const statusElementId = `copy-status-dir-${user.uid}`;
-            
-            return `
-                <div class="directory-item">
-                    <div class="user-details">
-                        <span style="font-weight: 600; color: var(--color-info);">${user.displayName || 'Anon User'}</span>
-                        <code title="Wallet ID: ${user.uid}" style="margin-left: 10px;">${uidShort}</code>
-                        <span id="${statusElementId}" class="copy-status-inline"></span>
-                    </div>
-                    <button style="padding: 6px 12px; font-size: 0.8em; box-shadow: none; transform: none; background-color: var(--color-secondary-accent);"
-                            onclick="window.copyIdToClipboard('${user.uid}', '${statusElementId}')">
-                        Copy ID
-                    </button>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // --- Incoming Request/Invoice Display ---
-    function displayRequests(requests) {
-        const output = document.getElementById('pending-requests-output');
-        if (!output) return; 
-        
-        if (requests.length === 0) {
-            output.innerHTML = '<p style="color: var(--color-text-subtle);">No pending invoices sent to you. You are debt-free!</p>';
-            return;
-        }
-
-        output.innerHTML = requests.map(req => {
-            const debtor = (req.fromAddress || 'N/A').substring(0, 10) + '...';
-            return `
-                <div class="request-card" style="border-left: 5px solid var(--color-primary-accent); background: #F3F4F6;">
-                    <span style="font-size: 1.1em; font-weight: bold; color: var(--color-primary-accent);">${window.formatCurrency(req.amount)} BVN</span> requested by: 
-                    <code title="Debtor ID: ${req.fromAddress}">${debtor}</code>
-                    <p style="font-size: 0.9em; color: var(--color-text-subtle); margin: 5px 0 10px 0;">Reason: <em>${req.message.replace('INVOICE: ', '')}</em></p>
-                    <button style="padding: 8px 15px; font-size: 0.9em; background-color: var(--color-success); box-shadow: 0 3px 0 #059669;"
-                            onclick="window.populateSendForm('${req.fromAddress}', ${window.formatCurrency(req.amount)})">
-                        Pay Now
-                    </button>
-                </div>
-            `;
-        }).join('');
-    }
     
     window.populateSendForm = (recipientId, amount) => {
         if (isRequestMode) window.toggleRequestMode(); // Switch back to send mode
@@ -801,7 +786,6 @@
         document.getElementById('amount').value = amount;
         document.getElementById('tx-section-title').scrollIntoView({ behavior: 'smooth' });
     };
-
 
     // --- Balance Calculation (Including Admin Override) ---
     window.calculateAndDisplayBalance = (blocks) => {
@@ -848,8 +832,70 @@
         balanceDisplay.dataset.calculatedBalance = balance;
     }
 
+    // --- Directory Display ---
+    function displayUserDirectory(users) {
+        // Implementation remains the same
+        const output = document.getElementById('user-directory-output');
+        document.getElementById('directory-count').textContent = users.length;
+        if (!output) return;
+
+        const currentUsers = users.filter(u => u.uid !== currentUserId);
+
+        if (currentUsers.length === 0) {
+            output.innerHTML = '<p style="color: var(--color-text-subtle);">No other active users found.</p>';
+            return;
+        }
+
+        output.innerHTML = currentUsers.map(user => {
+            const uidShort = user.uid.substring(0, 12) + '...';
+            const statusElementId = `copy-status-dir-${user.uid}`;
+            
+            return `
+                <div class="directory-item">
+                    <div class="user-details">
+                        <span style="font-weight: 600; color: var(--color-info);">${user.displayName || 'Anon User'}</span>
+                        <code title="Wallet ID: ${user.uid}" style="margin-left: 10px;">${uidShort}</code>
+                        <span id="${statusElementId}" class="copy-status-inline"></span>
+                    </div>
+                    <button style="padding: 6px 12px; font-size: 0.8em; box-shadow: none; transform: none; background-color: var(--color-secondary-accent);"
+                            onclick="window.copyIdToClipboard('${user.uid}', '${statusElementId}')">
+                        Copy ID
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // --- Incoming Request/Invoice Display ---
+    function displayRequests(requests) {
+        // Implementation remains the same
+        const output = document.getElementById('pending-requests-output');
+        if (!output) return; 
+        
+        if (requests.length === 0) {
+            output.innerHTML = '<p style="color: var(--color-text-subtle);">No pending invoices sent to you. You are debt-free!</p>';
+            return;
+        }
+
+        output.innerHTML = requests.map(req => {
+            const debtor = (req.fromAddress || 'N/A').substring(0, 10) + '...';
+            return `
+                <div class="request-card" style="border-left: 5px solid var(--color-primary-accent); background: #F3F4F6;">
+                    <span style="font-size: 1.1em; font-weight: bold; color: var(--color-primary-accent);">${window.formatCurrency(req.amount)} BVN</span> requested by: 
+                    <code title="Debtor ID: ${req.fromAddress}">${debtor}</code>
+                    <p style="font-size: 0.9em; color: var(--color-text-subtle); margin: 5px 0 10px 0;">Reason: <em>${req.message.replace('INVOICE: ', '')}</em></p>
+                    <button style="padding: 8px 15px; font-size: 0.9em; background-color: var(--color-success); box-shadow: 0 3px 0 #059669;"
+                            onclick="window.populateSendForm('${req.fromAddress}', ${window.formatCurrency(req.amount)})">
+                        Pay Now
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
     // --- Block Explorer Display ---
     function displayChain(blocks) {
+        // Implementation remains the same
         const output = document.getElementById('chain-output');
         output.innerHTML = '';
         document.getElementById('chain-length').textContent = blocks.length;
@@ -910,6 +956,7 @@
 
     // --- Chain Validation ---
     function checkChainValidity(chain) {
+        // Implementation remains the same
         let isValid = true;
         const target = Array(MINING_DIFFICULTY + 1).join("0");
         
