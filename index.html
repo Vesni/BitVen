@@ -167,6 +167,7 @@
                 <div class="balance-display"><span id="current-balance">0.00</span> BVN</div>
             </div>
             <div>
+                <!-- FIX 2: window.signInWithGoogle function is now correctly defined in the script below -->
                 <button id="sign-in-btn" onclick="window.signInWithGoogle()">Sign In/Wallet Login</button>
                 <button id="sign-out-btn" onclick="window.signOutUser()" style="display: none;">Sign Out</button>
                 <button onclick="window.calculateAndDisplayBalance(blocksData)" style="margin-left: 10px;">Refresh Balance</button>
@@ -256,46 +257,63 @@
     // ====================================================================
     // 1. CONFIGURATION & FIREBASE SETUP
     // ====================================================================
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    // FIX 3: Using Firebase v11.6.1 imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { 
         getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut,
         signInWithCustomToken, signInAnonymously
-    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { 
         getFirestore, collection, getDocs, addDoc, query, orderBy, limit,
         onSnapshot, writeBatch, doc, setDoc, serverTimestamp, setLogLevel
-    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     setLogLevel('Debug');
     
     // --- LEDGER CONSTANTS & ADMIN CONFIGURATION ---
     const BURN_ADDRESS = 'BVN_BURN_ADDRESS_0x0000000000000000000000000000000000000000';
     const MINING_DIFFICULTY = 5; 
-    const MINING_REWARD = 0.00; // Base reward is ZERO.
+    const MINING_REWARD = 0.00; 
     const TX_FEE = 0.01;
 
     // !!! ADMINISTRATOR CONFIGURATION !!!
-    // The admin user MUST replace the placeholder below with their actual Firebase Google Sign-In UID.
     const MASTER_ADMIN_UID = 'REPLACE_THIS_WITH_YOUR_ACTUAL_ADMIN_UID'; 
-    const UNLIMITED_BALANCE = 999999999.00; // The unlimited balance amount
+    const UNLIMITED_BALANCE = 999999999.00;
 
     // Environment-provided globals
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    
+    // FIX 1: CRITICAL FIX - Parse the configuration string
     let firebaseConfig = {};
     try {
-        firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // Correctly parse the provided configuration string
+        firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {};
     } catch (e) {
         console.error("Error parsing __firebase_config:", e);
     }
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
     // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+    let app, db, auth;
+    if (Object.keys(firebaseConfig).length > 0) {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+    } else {
+        console.error("Firebase config is missing or invalid. Application will not connect to Firestore.");
+    }
 
+
+    // Firestore Collection References (Public data for shared blockchain and directory)
+    const CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain_v2`);
+    const PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions_v2`);
+    const USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles_v2`);
+    
     // Initial Authentication attempt
     const attemptAuth = async () => {
+        if (!auth) return;
         try {
             if (initialAuthToken) {
                 await signInWithCustomToken(auth, initialAuthToken);
@@ -307,11 +325,6 @@
         }
     };
     attemptAuth();
-
-    // Firestore Collection References (Public data for shared blockchain and directory)
-    const CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain_v2`);
-    const PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions_v2`);
-    const USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles_v2`);
 
     // ====================================================================
     // 2. CORE BLOCKCHAIN CLASSES
@@ -331,7 +344,7 @@
     class Block {
         constructor(index, transactions, previousHash = '') {
             this.index = index;
-            this.timestamp = Date.now(); // Client-side timestamp for hashing consistency
+            this.timestamp = Date.now(); 
             this.transactions = transactions;
             this.previousHash = previousHash;
             this.nonce = 0; 
@@ -339,14 +352,12 @@
         }
 
         calculateHash() {
-            // Hash calculation must be deterministic
             return CryptoJS.SHA256(
                 this.index + 
                 this.previousHash + 
                 this.timestamp + 
                 this.nonce + 
                 JSON.stringify(this.transactions.map(tx => ({
-                    // Create a lite-version of TX data for hashing
                     from: tx.fromAddress, 
                     to: tx.toAddress, 
                     amt: tx.amount, 
@@ -394,16 +405,22 @@
         document.getElementById('reward-display').textContent = window.formatCurrency(MINING_REWARD);
         document.getElementById('difficulty-display').textContent = MINING_DIFFICULTY;
     }
-    updateConstantsUI(); // Call on load
+    updateConstantsUI(); 
 
     // --- AUTH UI AND LOGIC ---
+    // FIX 2: Re-implementing signInWithGoogle to resolve TypeError
     window.signInWithGoogle = () => {
+        if (!auth) {
+            console.error("Firebase Auth not initialized.");
+            return;
+        }
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' }); 
         signInWithPopup(auth, provider).catch((error) => console.error("Google Sign-In Error:", error));
     };
 
     window.signOutUser = () => {
+        if (!auth) return;
         signOut(auth).catch((error) => console.error("Sign Out Error:", error));
     };
     
@@ -411,7 +428,6 @@
         const statusEl = document.getElementById(statusElementId);
         if (idToCopy) {
             try {
-                // Use the document.execCommand('copy') method for reliable copy in iframes
                 const el = document.createElement('textarea');
                 el.value = idToCopy;
                 el.style.position = 'fixed'; document.body.appendChild(el);
@@ -460,48 +476,60 @@
     }
 
     // --- AUTH STATE CHANGE LISTENER ---
-    onAuthStateChanged(auth, (user) => {
-        const signInBtn = document.getElementById('sign-in-btn');
-        const signOutBtn = document.getElementById('sign-out-btn');
-        const walletIdCode = document.getElementById('wallet-id');
-        const statusSpan = document.getElementById('auth-status');
-        const mineBtn = document.getElementById('mine-btn');
-        isAuthReady = true;
+    if (auth) {
+        onAuthStateChanged(auth, (user) => {
+            const signInBtn = document.getElementById('sign-in-btn');
+            const signOutBtn = document.getElementById('sign-out-btn');
+            const walletIdCode = document.getElementById('wallet-id');
+            const statusSpan = document.getElementById('auth-status');
+            const mineBtn = document.getElementById('mine-btn');
+            isAuthReady = true;
 
-        if (user && user.isAnonymous === false) {
-            currentUserId = user.uid;
-            
-            // 1. Update User Profile for Directory
-            const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
-            setDoc(userProfileRef, { 
-                uid: user.uid, 
-                displayName: user.displayName || 'Wallet User', 
-                lastSeen: serverTimestamp() 
-            }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
+            if (user && user.isAnonymous === false) {
+                currentUserId = user.uid;
+                
+                // 1. Update User Profile for Directory
+                const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
+                setDoc(userProfileRef, { 
+                    uid: user.uid, 
+                    displayName: user.displayName || 'Wallet User', 
+                    lastSeen: serverTimestamp() 
+                }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
 
-            // 2. UI Update
-            walletIdCode.textContent = currentUserId;
-            statusSpan.innerHTML = `Signed In: ${user.displayName || 'User'}`;
-            statusSpan.style.color = 'var(--color-primary-accent)';
-            signInBtn.style.display = 'none';
-            signOutBtn.style.display = 'inline-block';
-            mineBtn.disabled = false;
-            
-            window.calculateAndDisplayBalance(blocksData); 
+                // 2. UI Update
+                walletIdCode.textContent = currentUserId;
+                statusSpan.innerHTML = `Signed In: ${user.displayName || 'User'}`;
+                statusSpan.style.color = 'var(--color-primary-accent)';
+                signInBtn.style.display = 'none';
+                signOutBtn.style.display = 'inline-block';
+                mineBtn.disabled = false;
+                
+                window.calculateAndDisplayBalance(blocksData); 
 
-        } else {
-            // Signed out or Anonymous
-            currentUserId = null;
-            walletIdCode.textContent = 'N/A';
-            statusSpan.innerHTML = 'Signed Out';
-            statusSpan.style.color = 'var(--color-danger)';
-            document.getElementById('current-balance').textContent = '0.00';
-            document.querySelector('.balance-label').textContent = 'Current Balance'; // Reset label
-            signInBtn.style.display = 'inline-block';
-            signOutBtn.style.display = 'none';
-            mineBtn.disabled = true;
-        }
-    });
+            } else if (user && user.isAnonymous === true) {
+                currentUserId = user.uid; // Still use UID for anonymous actions
+                walletIdCode.textContent = currentUserId.substring(0, 15) + '... (Anon)';
+                statusSpan.innerHTML = 'Anonymous';
+                statusSpan.style.color = 'var(--color-secondary-accent)';
+                signInBtn.style.display = 'inline-block';
+                signOutBtn.style.display = 'none';
+                mineBtn.disabled = false;
+                window.calculateAndDisplayBalance(blocksData);
+                
+            } else {
+                // Fully Signed out
+                currentUserId = null;
+                walletIdCode.textContent = 'N/A';
+                statusSpan.innerHTML = 'Signed Out';
+                statusSpan.style.color = 'var(--color-danger)';
+                document.getElementById('current-balance').textContent = '0.00';
+                document.querySelector('.balance-label').textContent = 'Current Balance'; // Reset label
+                signInBtn.style.display = 'inline-block';
+                signOutBtn.style.display = 'none';
+                mineBtn.disabled = true;
+            }
+        });
+    }
 
     // ====================================================================
     // 4. TRANSACTION & MINING LOGIC
@@ -511,7 +539,7 @@
     const validateTransactionInput = (toAddress, amount, isSending = true) => {
         const parsedAmount = window.parseAndRound(amount);
         const txStatus = document.getElementById('tx-status');
-        const currentBalance = window.parseAndRound(document.getElementById('current-balance').textContent);
+        const currentBalance = window.parseAndRound(document.getElementById('current-balance').dataset.calculatedBalance);
         const isAdmin = currentUserId === MASTER_ADMIN_UID;
 
 
@@ -535,6 +563,7 @@
 
     // --- STANDARD TRANSACTION (Send/Burn) ---
     window.sendTransaction = async () => {
+        if (!db) return; // Prevent run if Firebase not initialized
         const toAddress = document.getElementById('recipient-id').value.trim();
         const amount = document.getElementById('amount').value;
         const message = document.getElementById('message').value.trim();
@@ -564,6 +593,7 @@
 
     // --- INVOICE REQUEST ---
     window.requestFunds = async () => {
+        if (!db) return; // Prevent run if Firebase not initialized
         const debtorId = document.getElementById('recipient-id').value.trim();
         const amount = document.getElementById('amount').value;
         const message = document.getElementById('message').value.trim();
@@ -589,7 +619,7 @@
 
     // --- MINING ---
     window.mineBlock = async () => {
-        if (!currentUserId) return;
+        if (!currentUserId || !db) return;
 
         const mineBtn = document.getElementById('mine-btn');
         const miningStatus = document.getElementById('mining-status');
@@ -603,7 +633,7 @@
         const allPendingDocs = txSnapshot.docs;
         const transactionsToMine = allPendingDocs
             .filter(doc => !doc.data().isRequest)
-            .map(doc => ({...doc.data(), id: doc.id})); // Keep IDs for deletion
+            .map(doc => ({...doc.data(), id: doc.id})); 
         
         if (transactionsToMine.length === 0) {
              miningStatus.textContent = "No valid transactions to mine. Mining aborted.";
@@ -635,7 +665,6 @@
         // 4. Create and Mine New Block
         const newBlock = new Block(nextIndex, transactionsToMine, previousHash);
         
-        // This is the CPU intensive part
         newBlock.mineBlock(MINING_DIFFICULTY); 
         miningStatus.textContent = `Verification successful. Block ${newBlock.index} found. Committing...`;
 
@@ -666,44 +695,46 @@
     // ====================================================================
 
     // Listener for the Blockchain
-    onSnapshot(CHAIN_REF, (snapshot) => {
-        blocksData = [];
-        snapshot.forEach(doc => blocksData.push({...doc.data(), id: doc.id}));
-        
-        blocksData.sort((a, b) => a.index - b.index);
+    if (db) {
+        onSnapshot(CHAIN_REF, (snapshot) => {
+            blocksData = [];
+            snapshot.forEach(doc => blocksData.push({...doc.data(), id: doc.id}));
+            
+            blocksData.sort((a, b) => a.index - b.index);
 
-        displayChain(blocksData);
-        checkChainValidity(blocksData);
-        if (currentUserId) {
-            window.calculateAndDisplayBalance(blocksData);
-        }
-    }, (error) => console.error("Blockchain Snapshot Error:", error));
+            displayChain(blocksData);
+            checkChainValidity(blocksData);
+            if (currentUserId) {
+                window.calculateAndDisplayBalance(blocksData);
+            }
+        }, (error) => console.error("Blockchain Snapshot Error:", error));
     
-    // Listener for Pending Transactions
-    onSnapshot(PENDING_TX_REF, (snapshot) => {
-        const pendingTxs = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
+        // Listener for Pending Transactions
+        onSnapshot(PENDING_TX_REF, (snapshot) => {
+            const pendingTxs = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
-        const realTxs = pendingTxs.filter(tx => !tx.isRequest);
-        const feesPool = realTxs.reduce((sum, tx) => sum + window.parseAndRound(tx.fee), 0);
-        
-        document.getElementById('pending-tx-count').textContent = realTxs.length;
-        document.getElementById('fees-pool').textContent = window.formatCurrency(feesPool);
+            const realTxs = pendingTxs.filter(tx => !tx.isRequest);
+            const feesPool = realTxs.reduce((sum, tx) => sum + window.parseAndRound(tx.fee), 0);
+            
+            document.getElementById('pending-tx-count').textContent = realTxs.length;
+            document.getElementById('fees-pool').textContent = window.formatCurrency(feesPool);
 
-        if (currentUserId) {
-            // Filter invoices where the current user is the recipient (toAddress)
-            const requests = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === currentUserId);
-            displayRequests(requests);
-        } else {
-             document.getElementById('pending-requests-output').innerHTML = '<p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>';
-        }
-    }, (error) => console.error("Pending TX Snapshot Error:", error));
+            if (currentUserId) {
+                const requests = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === currentUserId);
+                displayRequests(requests);
+            } else {
+                document.getElementById('pending-requests-output').innerHTML = '<p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>';
+            }
+        }, (error) => console.error("Pending TX Snapshot Error:", error));
 
-    // Listener for the User Directory
-    onSnapshot(USER_PROFILE_REF, (snapshot) => {
-        userProfiles = [];
-        snapshot.forEach(doc => userProfiles.push(doc.data()));
-        displayUserDirectory(userProfiles);
-    }, (error) => console.error("User Directory Snapshot Error:", error));
+        // Listener for the User Directory
+        onSnapshot(USER_PROFILE_REF, (snapshot) => {
+            userProfiles = [];
+            snapshot.forEach(doc => userProfiles.push(doc.data()));
+            displayUserDirectory(userProfiles);
+        }, (error) => console.error("User Directory Snapshot Error:", error));
+    }
+
 
     // --- Directory Display ---
     function displayUserDirectory(users) {
@@ -779,24 +810,23 @@
         const balanceDisplay = document.getElementById('current-balance');
         const balanceLabel = document.querySelector('.balance-label');
         
-        // --- ADMIN UNLIMITED BITVEN CHECK ---
         const isAdmin = currentUserId === MASTER_ADMIN_UID;
 
         if (isAdmin) {
-            balanceDisplay.textContent = '∞'; // Use infinity symbol for dramatic effect
+            balanceDisplay.textContent = '∞'; 
             balanceDisplay.style.fontSize = '3.5em';
             balanceDisplay.style.color = 'var(--color-info)'; 
             balanceLabel.textContent = 'Current Balance (ADMIN MODE)';
             
-            // Set balance to a high numerical value for calculations without displaying it
+            // Store the high numerical value for the admin's balance check bypass
             balanceDisplay.dataset.calculatedBalance = UNLIMITED_BALANCE;
             return; 
         }
 
         // --- STANDARD USER LOGIC ---
-        balanceDisplay.style.fontSize = '3em'; // Reset size
-        balanceDisplay.style.color = 'var(--color-success)'; // Reset color
-        balanceLabel.textContent = 'Current Balance'; // Reset label
+        balanceDisplay.style.fontSize = '3em'; 
+        balanceDisplay.style.color = 'var(--color-success)'; 
+        balanceLabel.textContent = 'Current Balance'; 
 
         let balance = 0;
         for (const block of blocks) {
@@ -814,6 +844,7 @@
             }
         }
         balanceDisplay.textContent = window.formatCurrency(balance);
+        // Store the actual balance for standard user's balance check
         balanceDisplay.dataset.calculatedBalance = balance;
     }
 
@@ -839,7 +870,6 @@
 
                 let txDetails = '';
                 if (isReward) {
-                    // Reward only includes fees since MINING_REWARD is 0.00
                     txDetails = `💰 Reward (Fees): ${window.formatCurrency(tx.amount)} BVN`;
                 } else if (isBurn) {
                     txDetails = `🔥 BURN: ${window.formatCurrency(tx.amount)} BVN (Fee: ${window.formatCurrency(tx.fee)})`;
@@ -887,7 +917,6 @@
             const currentBlock = chain[i];
             const previousBlock = chain[i - 1];
 
-            // Re-calculate hash to verify proof of work
             const tempBlock = new Block(currentBlock.index, currentBlock.transactions, currentBlock.previousHash);
             tempBlock.nonce = currentBlock.nonce;
             const calculatedHash = tempBlock.calculateHash();
