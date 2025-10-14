@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen Ledger v5 Forca</title>
+    <title>BitVen Ledger v5 (Final Working Version)</title>
     <!-- Include crypto-js for SHA256 Hashing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     
@@ -233,7 +233,6 @@
             <h2>👤 Wallet & Authentication</h2>
             <div id="auth-status-container">
                 <p><strong>Status:</strong> <span id="auth-status">Initializing...</span></p>
-                <!-- FIX: Added missing 'app-id' element for JS initialization -->
                 <p style="font-size: 0.8rem; color: var(--color-text-subtle);"><strong>App ID:</strong> <code id="app-id">N/A</code></p>
                 <p><strong>Your Wallet ID (UID):</strong> 
                     <code id="wallet-id">N/A</code>
@@ -260,7 +259,7 @@
         <div class="section">
             <h2>⛏️ Mining Pool</h2>
             <p>Pending Transactions: <span id="pending-tx-count">0</span></p>
-            <p>Difficulty: <span id="difficulty-display">...</span> (Target leading zeros)</p>
+            <p>Difficulty: <span id="difficulty-display">5</span> (Target leading zeros)</p>
             <button id="mine-btn" onclick="window.mineBlock()" disabled>Start Mining Block</button>
             <div id="mine-status" class="status-message" style="display:none;"></div>
         </div>
@@ -276,7 +275,7 @@
                 </div>
                 <button id="submit-tx-btn" type="submit" disabled>Submit Payment</button>
             </form>
-            <button class="btn-group" onclick="window.toggleRequestMode()">Switch to Invoice Request</button>
+            <button id="toggle-request-mode-btn" onclick="window.toggleRequestMode()">Switch to Invoice Request</button>
         </div>
 
         <!-- User Directory (Middle Center) -->
@@ -305,8 +304,8 @@
             <div id="history-output">Loading history...</div>
         </div>
         
-        <!-- Debug Log Output (Optional but helpful, currently hidden) -->
-        <div class="section section-full" style="display:none;">
+        <!-- Debug Log Output -->
+        <div class="section section-full">
             <h2>🖥️ Debug Log</h2>
             <textarea id="log-output" rows="5" style="width: 100%; font-size: 0.75rem; background: #000; color: #0f0;"></textarea>
         </div>
@@ -324,7 +323,7 @@
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { 
         getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
-        signOut, signInAnonymously, signInWithCustomToken
+        signOut, signInWithCustomToken
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     // --- Provided Configuration (Manual Insertion) ---
@@ -353,7 +352,8 @@
     const TX_FEE = 0.01;
     const MINING_DIFFICULTY = 5; // Number of leading zeros required for PoW
     const BURN_ADDRESS = "0xBURN-BITVEN-SUPPLY";
-    const MASTER_ADMIN_UID = "pPLyBfQ68OVLx62NazbMeJw9lN63"; // Placeholder for Admin's UID
+    // ADMIN UID UPDATED AS REQUESTED
+    const MASTER_ADMIN_UID = "pPLyBfQ68OVLx62NazbMeJw9lN63"; 
     const UNLIMITED_BALANCE = Number.MAX_SAFE_INTEGER;
 
     // --- Firebase Paths (Ensuring correct public path) ---
@@ -444,25 +444,23 @@
             PENDING_TX_REF = collection(db, BASE_PATH + "pending_transactions_v2");
             USER_PROFILES_REF = collection(db, BASE_PATH + "user_profiles_v2");
             
-            // Set App ID in UI (Now safe, as element exists)
+            // Set App ID in UI
             document.getElementById('app-id').textContent = APP_ID;
 
-            // Authentication flow (ensures sign-in first)
+            // Authentication flow
             log("Attempting authentication...");
             
-            // This is the CRITICAL block to fix auth errors in the environment
+            // FIX 1: Removed anonymous sign-in fallback to prevent 'auth/admin-restricted-operation' error.
             if (INITIAL_AUTH_TOKEN) {
                 log("Sign-in detected. Attempting with custom token...");
                 try {
                     await signInWithCustomToken(auth, INITIAL_AUTH_TOKEN);
                     log("Custom token sign-in successful.");
                 } catch(e) {
-                     log(`Custom token failed. Falling back to anonymous sign-in...`, true);
-                     await signInAnonymously(auth);
+                     log(`Custom token sign-in failed: ${e.message}. User must manually sign in.`, true);
                 }
             } else {
-                log("Custom token not available. Attempting anonymous sign-in...");
-                await signInAnonymously(auth);
+                 log("No initial auth token provided. User must manually sign in.");
             }
 
             // Auth State Listener
@@ -499,7 +497,6 @@
 
         } catch (error) {
             log(`FATAL ERROR during Initialization: ${error.message}`, true);
-            // This line is now safe, as 'auth-status' exists.
             document.getElementById('auth-status').textContent = `FATAL ERROR: ${error.code || 'UNKNOWN'}`;
             toggleUI(false);
         }
@@ -791,12 +788,13 @@
             });
     });
 
+    // FIX 2: Correctly reference the toggle button using its new ID
     window.toggleRequestMode = () => {
         isRequestMode = !isRequestMode;
         const header = document.getElementById('tx-header');
         const recipientInput = document.getElementById('recipient-id');
         const submitBtn = document.getElementById('submit-tx-btn');
-        const toggleBtn = document.querySelector('#transaction-section .btn-group button');
+        const toggleBtn = document.getElementById('toggle-request-mode-btn'); 
         const messageInput = document.getElementById('message');
 
         if (isRequestMode) {
@@ -841,10 +839,10 @@
             let totalFeesCollected = 0;
             const txList = block.transactions.map(tx => {
                 let txClass = '';
-                let txType = 'Payment';
+                let txType = '';
                 let txDisplay = '';
 
-                if (tx.fromAddress === 'SYSTEM_REWARD') {
+                if (tx.fromAddress === 'SYSTEM_REWARD' && tx.toAddress !== BURN_ADDRESS) {
                     txType = 'REWARD';
                     txClass = 'tx-type-reward';
                     txDisplay = `Miner Reward: ${tx.amount.toFixed(2)} BVN`;
@@ -852,11 +850,17 @@
                     txType = 'BURN';
                     txClass = 'tx-type-burn';
                     txDisplay = `Burned ${tx.amount.toFixed(2)} BVN`;
-                } else {
+                } else if (tx.isRequest) {
+                    txType = 'REQUEST (Pending)';
+                    txClass = 'tx-type-request';
+                    txDisplay = `Request: ${tx.amount.toFixed(2)} BVN`;
+                }
+                 else {
                     // Regular transaction
                     if (!tx.isRequest) {
                          totalFeesCollected += TX_FEE;
                     }
+                    txType = 'Payment';
                     txDisplay = `Send: ${tx.amount.toFixed(2)} BVN`;
                 }
 
