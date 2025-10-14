@@ -4,710 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVen Secure Ledger</title>
-    <!-- Include crypto-js for SHA256 Hashing -->
+    <!-- Include crypto-js for SHA256 Hashing (Used in Proof-of-Work) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <!-- Firebase Imports for client-side modular access -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            GoogleAuthProvider, 
-            signInWithPopup, 
-            onAuthStateChanged,
-            signOut,
-            signInWithCustomToken,
-            signInAnonymously
-        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            getDocs, 
-            addDoc, 
-            query, 
-            orderBy, 
-            limit,
-            onSnapshot,
-            writeBatch,
-            doc,
-            setDoc,
-            serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
-        setLogLevel('Debug');
-        
-        // ====================================================================
-        // MANDATORY FIREBASE INITIALIZATION USING CANVAS GLOBALS
-        // ====================================================================
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        // Authenticate with custom token or anonymously if not available
-        if (typeof __initial_auth_token !== 'undefined') {
-            signInWithCustomToken(auth, __initial_auth_token).catch(e => console.error("Custom Token Auth failed, falling back to anonymous:", e));
-        } else {
-            signInAnonymously(auth).catch(e => console.error("Anonymous Auth failed:", e));
-        }
-
-        // Firestore Collection Paths (Public data for shared blockchain and directory)
-        const CHAIN_REF_PATH = `/artifacts/${appId}/public/data/blockchain_chain`;
-        const PENDING_TX_REF_PATH = `/artifacts/${appId}/public/data/pending_transactions`;
-        const USER_PROFILE_REF_PATH = `/artifacts/${appId}/public/data/user_profiles`; // NEW PATH for user directory
-
-        const CHAIN_REF = collection(db, CHAIN_REF_PATH);
-        const PENDING_TX_REF = collection(db, PENDING_TX_REF_PATH);
-        const USER_PROFILE_REF = collection(db, USER_PROFILE_REF_PATH); // NEW REF
-
-        // ====================================================================
-        // CORE BLOCKCHAIN CONFIGURATION & CLASSES
-        // ====================================================================
-        
-        const ADMIN_EMAIL = 'lanushomeappliances@gmail.com'; 
-        const MINING_DIFFICULTY = 5; 
-        const MINING_REWARD = 5;   
-
-        class Transaction {
-            constructor(fromAddress, toAddress, amount, message = '', isRequest = false) {
-                this.fromAddress = fromAddress;
-                this.toAddress = toAddress;
-                this.amount = parseFloat(amount);
-                this.timestamp = serverTimestamp(); 
-                this.message = message;
-                this.isRequest = isRequest; 
-            }
-        }
-
-        class Block {
-            constructor(index, transactions, previousHash = '') {
-                this.index = index;
-                this.timestamp = Date.now();
-                this.transactions = transactions;
-                this.previousHash = previousHash;
-                this.nonce = 0; 
-                this.hash = this.calculateHash();
-            }
-
-            calculateHash() {
-                return CryptoJS.SHA256(
-                    this.index + 
-                    this.previousHash + 
-                    this.timestamp + 
-                    this.nonce + 
-                    JSON.stringify(this.transactions)
-                ).toString();
-            }
-
-            mineBlock(difficulty) {
-                const target = Array(difficulty + 1).join("0"); 
-                while (this.hash.substring(0, difficulty) !== target) {
-                    this.nonce++;
-                    this.hash = this.calculateHash();
-                }
-                console.log("BLOCK MINED:", this.hash);
-            }
-        }
-
-        // ====================================================================
-        // AUTHENTICATION & UI SETUP
-        // ====================================================================
-        
-        let currentUserId = null;
-        let isAdmin = false;
-
-        // Global storage for snapshots to combine history display
-        let blocksData = [];
-        let pendingSnapshotData = null;
-
-
-        window.signInWithGoogle = () => {
-            const provider = new GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' }); 
-            signInWithPopup(auth, provider)
-              .then(() => console.log("Sign-in successful."))
-              .catch((error) => console.error("Google Sign-In Error:", error));
-        };
-
-        window.signOutUser = () => {
-            signOut(auth).then(() => console.log("User signed out."));
-        };
-
-        window.copyIdToClipboard = (idToCopy, statusElementId = 'copy-status') => {
-            const statusEl = document.getElementById(statusElementId);
-            
-            if (idToCopy) {
-                try {
-                    // Fallback method for clipboard access within iframe constraints
-                    const el = document.createElement('textarea');
-                    el.value = idToCopy;
-                    document.body.appendChild(el);
-                    el.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(el);
-                    
-                    statusEl.textContent = '✅ ID copied!';
-                    setTimeout(() => { statusEl.textContent = ''; }, 3000);
-                } catch (err) {
-                    console.error('Could not copy text: ', err);
-                    statusEl.textContent = '❌ Failed to copy ID.';
-                }
-            }
-        };
-
-        window.copyWalletId = () => {
-            const walletId = document.getElementById('wallet-id').textContent;
-            window.copyIdToClipboard(walletId);
-        }
-
-
-        onAuthStateChanged(auth, (user) => {
-            const signInBtn = document.getElementById('sign-in-btn');
-            const signOutBtn = document.getElementById('sign-out-btn');
-            const walletIdCode = document.getElementById('wallet-id');
-            const statusSpan = document.getElementById('auth-status');
-            const txContainer = document.getElementById('transaction-container');
-            
-            if (user) {
-                currentUserId = user.uid;
-                isAdmin = user.email === ADMIN_EMAIL;
-                
-                // NEW: Save/Update user profile for the directory
-                const userProfileRef = doc(db, USER_PROFILE_REF_PATH, user.uid);
-                setDoc(userProfileRef, {
-                    uid: user.uid,
-                    displayName: user.displayName || 'Anonymous User',
-                    lastSeen: serverTimestamp()
-                }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
-
-                // Update UI for regular user or admin
-                walletIdCode.textContent = currentUserId;
-                statusSpan.innerHTML = `${user.displayName} <span class="tag ${isAdmin ? 'admin-tag' : 'user-tag'}">${isAdmin ? 'BANK ADMIN' : 'USER'}</span>`;
-                signInBtn.style.display = 'none';
-                signOutBtn.style.display = 'inline-block';
-                document.getElementById('copy-status').textContent = '';
-
-                if (isAdmin) {
-                    txContainer.innerHTML = `
-                        <div class="section">
-                            <h2>🏦 Admin (Bank) Distribution</h2>
-                            <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" class="input-full">
-                            <input type="number" id="amount" placeholder="Amount (BVN)" value="1000" min="1" step="any" class="input-half">
-                            <button id="distribute-btn" onclick="window.issueFunds()" class="bank-btn">Issue/Distribute Funds</button>
-                            <p id="tx-status" style="color: var(--color-success); margin-top: 10px;">You are the Bank. Your balance is UNLIMITED.</p>
-                        </div>
-                    `;
-                    document.getElementById('current-balance').textContent = 'UNLIMITED';
-                    document.getElementById('mine-btn').disabled = true; 
-                } else {
-                    txContainer.innerHTML = `
-                        <div class="section">
-                            <h2>💸 Send BitVen</h2>
-                            <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" class="input-full">
-                            <input type="number" id="amount" placeholder="Amount (BVN)" value="1" min="0.01" step="any" class="input-half">
-                            <input type="text" id="message" placeholder="Optional Message (e.g., 'Payment for service')" class="input-half">
-                            <button id="send-btn" onclick="window.sendTransaction()">Submit Transaction</button>
-                            <p id="tx-status" style="color: var(--color-primary-accent); margin-top: 10px;"></p>
-                        </div>
-
-                        <div class="section request-section">
-                            <h2>✍️ Request Funds (Invoice)</h2>
-                            <input type="text" id="debtor-id" placeholder="Debtor Wallet ID (UID)" class="input-full">
-                            <input type="number" id="request-amount" placeholder="Amount to Request (BVN)" value="5" min="0.01" step="any" class="input-half">
-                            <input type="text" id="request-message" placeholder="Reason for Invoice" class="input-half">
-                            <button id="request-btn" onclick="window.requestFunds()" class="request-btn">Create Invoice</button>
-                            <p id="request-status" style="color: var(--color-secondary-accent); margin-top: 10px;"></p>
-                        </div>
-                    `;
-                    window.calculateAndDisplayBalance(); 
-                    document.getElementById('mine-btn').disabled = false;
-                    window.displayPersonalHistory(blocksData, pendingSnapshotData);
-                }
-            } else {
-                currentUserId = null;
-                isAdmin = false;
-                walletIdCode.textContent = 'N/A (Sign in to get a wallet ID)';
-                statusSpan.innerHTML = 'Signed Out';
-                document.getElementById('current-balance').textContent = '0';
-                signInBtn.style.display = 'inline-block';
-                signOutBtn.style.display = 'none';
-                txContainer.innerHTML = '<div class="section"><p>Please sign in to view transactions or mine.</p></div>';
-                document.getElementById('mine-btn').disabled = true;
-                document.getElementById('copy-status').textContent = '';
-                document.getElementById('personal-history-output').innerHTML = '<p class="no-requests">Sign in to see your history.</p>';
-            }
-        });
-
-        // ====================================================================
-        // TRANSACTION & MINING FUNCTIONS
-        // ====================================================================
-
-        window.issueFunds = async () => {
-            if (!isAdmin) return;
-
-            const toAddress = document.getElementById('recipient-id').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value);
-            const txStatus = document.getElementById('tx-status');
-            
-            if (!toAddress || isNaN(amount) || amount <= 0) {
-                txStatus.textContent = "Error: Invalid recipient or amount.";
-                return;
-            }
-
-            const newTx = new Transaction('BANK_ADMIN', toAddress, amount, 'Bank Distribution');
-            
-            try {
-                await addDoc(PENDING_TX_REF, { ...newTx });
-                txStatus.textContent = `BANK: Successfully issued ${amount} BVN to ${toAddress.substring(0, 8)}... (Pending mining)`;
-                document.getElementById('recipient-id').value = '';
-            } catch (e) {
-                txStatus.textContent = "Error issuing funds: " + e.message;
-                console.error("Error issuing funds: ", e);
-            }
-        }
-
-        window.sendTransaction = async () => {
-            if (isAdmin) return; 
-
-            const toAddress = document.getElementById('recipient-id').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value);
-            const message = document.getElementById('message').value.trim();
-            const txStatus = document.getElementById('tx-status');
-            
-            if (!currentUserId) { txStatus.textContent = "Error: Please sign in."; return; }
-            if (!toAddress || isNaN(amount) || amount <= 0) { txStatus.textContent = "Error: Invalid recipient or amount."; return; }
-
-            const newTx = new Transaction(currentUserId, toAddress, amount, message, false);
-            
-            try {
-                await addDoc(PENDING_TX_REF, { ...newTx });
-                txStatus.textContent = `Transaction submitted! To: ${toAddress.substring(0, 8)}... for ${amount} BVN. (Pending mining)`;
-                document.getElementById('recipient-id').value = '';
-                document.getElementById('amount').value = '1';
-                document.getElementById('message').value = '';
-
-            } catch (e) {
-                txStatus.textContent = "Error submitting transaction: " + e.message;
-                console.error("Error submitting transaction: ", e);
-            }
-        };
-
-        window.requestFunds = async () => {
-            if (isAdmin) return; 
-            
-            const debtorId = document.getElementById('debtor-id').value.trim();
-            const amount = parseFloat(document.getElementById('request-amount').value);
-            const message = document.getElementById('request-message').value.trim();
-            const requestStatus = document.getElementById('request-status');
-            
-            if (!currentUserId) { requestStatus.textContent = "Error: Please sign in."; return; }
-            if (!debtorId || isNaN(amount) || amount <= 0) { requestStatus.textContent = "Error: Invalid debtor or amount."; return; }
-            if (debtorId === currentUserId) { requestStatus.textContent = "Error: Cannot invoice yourself."; return; }
-
-            const requestTx = new Transaction(debtorId, currentUserId, amount, `INVOICE: ${message}`, true);
-            
-            try {
-                await addDoc(PENDING_TX_REF, { ...requestTx });
-                requestStatus.textContent = `Invoice created for ${debtorId.substring(0, 8)}... for ${amount} BVN. (Pending mining)`;
-                document.getElementById('debtor-id').value = '';
-                document.getElementById('request-amount').value = '5';
-                document.getElementById('request-message').value = '';
-
-            } catch (e) {
-                requestStatus.textContent = "Error submitting request: " + e.message;
-                console.error("Error submitting request: ", e);
-            }
-        };
-
-
-        window.mineBlock = async () => {
-            if (isAdmin || !currentUserId) return;
-
-            document.getElementById('mine-btn').disabled = true;
-            document.getElementById('mine-btn').textContent = "Mining... (CPU working hard!)";
-
-            const txSnapshot = await getDocs(PENDING_TX_REF);
-            if (txSnapshot.empty) {
-                document.getElementById('mine-btn').textContent = "No transactions. Mine Block";
-                document.getElementById('mine-btn').disabled = false;
-                return;
-            }
-            
-            const transactionsToMine = txSnapshot.docs
-                .filter(doc => !doc.data().isRequest)
-                .map(doc => doc.data());
-            
-            if (transactionsToMine.length === 0) {
-                 document.getElementById('mine-btn').textContent = "Only requests pending. Mine Block";
-                 document.getElementById('mine-btn').disabled = false;
-                 return;
-            }
-
-
-            let previousHash = Array(MINING_DIFFICULTY + 1).join("0") + 'GENESIS_HASH'; 
-            let nextIndex = 0;
-            
-            const lastBlockQuery = query(CHAIN_REF, orderBy('index', 'desc'), limit(1));
-            const lastBlockSnapshot = await getDocs(lastBlockQuery);
-
-            lastBlockSnapshot.forEach(doc => {
-                const lastBlock = doc.data();
-                previousHash = lastBlock.hash;
-                nextIndex = lastBlock.index + 1;
-            });
-            
-            const rewardTx = new Transaction('SYSTEM_REWARD', currentUserId, MINING_REWARD, 'Mining Reward', false);
-            transactionsToMine.push(rewardTx);
-
-            const newBlock = new Block(nextIndex, transactionsToMine, previousHash);
-            
-            // --- Proof-of-Work ---
-            newBlock.mineBlock(MINING_DIFFICULTY); 
-            // ---------------------
-
-            const batch = writeBatch(db);
-
-            batch.set(doc(CHAIN_REF), { ...newBlock, timestamp: serverTimestamp() });
-
-            txSnapshot.docs
-                .filter(doc => !doc.data().isRequest) 
-                .forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-
-            try {
-                await batch.commit();
-                console.log(`Block ${newBlock.index} successfully mined!`);
-            } catch (e) {
-                console.error("Error mining block:", e);
-            } finally {
-                document.getElementById('mine-btn').textContent = "Mine New Block";
-                document.getElementById('mine-btn').disabled = false;
-            }
-        };
-        
-        // ====================================================================
-        // DATA DISPLAY & LISTENERS
-        // ====================================================================
-
-        // Real-time listener for the Blockchain
-        onSnapshot(CHAIN_REF, (snapshot) => {
-            blocksData = [];
-            snapshot.forEach(doc => blocksData.push(doc.data()));
-            
-            blocksData.sort((a, b) => a.index - b.index);
-
-            displayChain(blocksData);
-            checkChainValidity(blocksData);
-            if (!isAdmin) {
-                window.calculateAndDisplayBalance(blocksData);
-                window.displayPersonalHistory(blocksData, pendingSnapshotData);
-            }
-        });
-        
-        // Real-time listener for Pending Transactions
-        onSnapshot(PENDING_TX_REF, (snapshot) => {
-            pendingSnapshotData = snapshot;
-            const realTxCount = snapshot.docs.filter(doc => !doc.data().isRequest).length;
-            document.getElementById('pending-tx-count').textContent = realTxCount;
-
-            if (currentUserId && !isAdmin) {
-                const requests = snapshot.docs
-                    .map(doc => ({...doc.data(), id: doc.id}))
-                    .filter(tx => tx.isRequest && tx.toAddress === currentUserId);
-                displayRequests(requests);
-                window.displayPersonalHistory(blocksData, pendingSnapshotData);
-            }
-        });
-
-        // NEW: Real-time listener for the User Directory
-        onSnapshot(USER_PROFILE_REF, (snapshot) => {
-            const users = [];
-            snapshot.forEach(doc => users.push(doc.data()));
-            displayUserDirectory(users);
-        });
-
-        // ====================================================================
-        // DIRECTORY FUNCTIONALITY
-        // ====================================================================
-
-        function displayUserDirectory(users) {
-            const output = document.getElementById('user-directory-output');
-            if (!output) return;
-
-            const currentUsers = users.filter(u => u.uid !== currentUserId);
-
-            if (currentUsers.length === 0) {
-                output.innerHTML = '<p class="no-requests">No other active users found.</p>';
-                return;
-            }
-
-            output.innerHTML = currentUsers.map(user => {
-                const uidShort = user.uid.substring(0, 10) + '...';
-                const statusElementId = `copy-status-dir-${user.uid}`;
-                
-                return `
-                    <div class="directory-item">
-                        <div class="user-details">
-                            <span class="user-name">${user.displayName || 'Anon User'}</span>
-                            <code title="Wallet ID: ${user.uid}">${uidShort}</code>
-                            <p id="${statusElementId}" class="copy-status-inline"></p>
-                        </div>
-                        <button class="directory-copy-btn" 
-                                onclick="window.copyIdToClipboard('${user.uid}', '${statusElementId}')">
-                            Copy ID
-                        </button>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // --- Other Display Functions (kept the same) ---
-
-        function displayRequests(requests) {
-            const output = document.getElementById('pending-requests-output');
-            if (!output) return; 
-            
-            if (requests.length === 0) {
-                output.innerHTML = '<p class="no-requests">No pending invoices sent to you. Time to get paid!</p>';
-                return;
-            }
-
-            output.innerHTML = requests.map(req => {
-                const debtor = (req.fromAddress || 'N/A').substring(0, 10) + '...';
-                return `
-                    <div class="request-card">
-                        <span class="request-amount">${req.amount.toFixed(2)} BVN</span> requested by: 
-                        <code title="Debtor ID: ${req.fromAddress}">${debtor}</code>
-                        <p class="request-msg">${req.message}</p>
-                        <button class="pay-request-btn" 
-                                onclick="window.populateSendForm('${req.fromAddress}', ${req.amount.toFixed(2)})">
-                            Pay Invoice
-                        </button>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        window.populateSendForm = (recipientId, amount) => {
-            document.getElementById('recipient-id').value = recipientId;
-            document.getElementById('amount').value = amount;
-            document.getElementById('transaction-container').scrollIntoView({ behavior: 'smooth' });
-        };
-        
-        window.displayPersonalHistory = (blocks = [], pendingSnapshot = null) => {
-            if (!currentUserId || isAdmin) return;
-
-            let history = [];
-
-            blocks.forEach(block => {
-                block.transactions.forEach(tx => {
-                    if (tx.fromAddress === currentUserId || tx.toAddress === currentUserId) {
-                        const status = tx.fromAddress === 'SYSTEM_REWARD' ? 'MINED (Reward)' : (tx.fromAddress === 'BANK_ADMIN' ? 'MINED (Bank)' : 'MINED');
-                        history.push({ ...tx, status: status, blockIndex: block.index, timestamp: new Date(block.timestamp) });
-                    }
-                });
-            });
-
-            if (pendingSnapshot) {
-                pendingSnapshot.docs.forEach(doc => {
-                    const tx = doc.data();
-                    const timestamp = doc.data().timestamp && doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(); 
-                    
-                    if (tx.isRequest) {
-                        if (tx.fromAddress === currentUserId) {
-                            history.push({ ...tx, status: 'REQUEST (Sent)', timestamp: timestamp });
-                        } else if (tx.toAddress === currentUserId) {
-                            history.push({ ...tx, status: 'REQUEST (Received)', timestamp: timestamp });
-                        }
-                    } else {
-                        if (tx.fromAddress === currentUserId) {
-                            history.push({ ...tx, status: 'PENDING (Sent)', timestamp: timestamp });
-                        } else if (tx.toAddress === currentUserId) {
-                            history.push({ ...tx, status: 'PENDING (Received)', timestamp: timestamp });
-                        }
-                    }
-                });
-            }
-
-            history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-            const output = document.getElementById('personal-history-output');
-            if (!output) return;
-
-            if (history.length === 0) {
-                output.innerHTML = '<p class="no-requests">No transactions or requests found in your history.</p>';
-                return;
-            }
-
-            output.innerHTML = history.map(item => {
-                const isOutbound = item.fromAddress === currentUserId && !item.isRequest;
-                const isRequestSent = item.fromAddress !== currentUserId && item.isRequest;
-                const isRequestReceived = item.toAddress === currentUserId && item.isRequest;
-
-                let direction, addressCode, amountClass, statusClass;
-
-                if (item.status.includes('MINED') || item.status.includes('Received')) {
-                    amountClass = 'amount-in';
-                    
-                    if (isRequestReceived) {
-                         direction = 'INVOICE FROM:';
-                         addressCode = item.fromAddress;
-                         statusClass = 'status-request-in';
-                    } else if (item.fromAddress === 'SYSTEM_REWARD') {
-                        direction = 'REWARD FROM:';
-                        addressCode = 'SYSTEM_REWARD';
-                        statusClass = 'status-success';
-                    } else if (item.fromAddress === 'BANK_ADMIN') {
-                        direction = 'FROM:';
-                        addressCode = 'BANK_ADMIN';
-                        statusClass = 'status-success';
-                    } else {
-                        direction = 'FROM:';
-                        addressCode = item.fromAddress;
-                        statusClass = item.status.includes('MINED') ? 'status-success' : 'status-pending-in';
-                    }
-                } else {
-                    amountClass = 'amount-out';
-                    
-                    if (isRequestSent) {
-                         direction = 'INVOICED:';
-                         addressCode = item.fromAddress; 
-                         statusClass = 'status-request-out';
-                    } else {
-                         direction = 'TO:';
-                         addressCode = item.toAddress;
-                         statusClass = item.status.includes('MINED') ? 'status-danger' : 'status-pending-out';
-                    }
-                }
-                
-                const displayAddress = (addressCode || 'N/A').substring(0, 10) + '...';
-
-                return `
-                    <div class="history-item ${statusClass}">
-                        <div class="history-amount ${amountClass}">${isOutbound || isRequestSent ? '-' : '+'}${item.amount.toFixed(2)} BVN</div>
-                        <div class="history-details">
-                            <div class="history-status">${item.status} ${item.blockIndex ? `(Block #${item.blockIndex})` : ''}</div>
-                            <div class="history-address">${direction} <code title="${addressCode}">${displayAddress}</code></div>
-                            <div class="history-message">Message: <em>${item.message.replace('INVOICE: ', '') || 'N/A'}</em></div>
-                            <div class="history-time">${item.timestamp.toLocaleString()}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-
-        function displayChain(blocks) {
-            const output = document.getElementById('chain-output');
-            output.innerHTML = '';
-            document.getElementById('chain-length').textContent = blocks.length;
-
-            blocks.forEach(block => {
-                const txList = block.transactions
-                    .filter(tx => !tx.isRequest) 
-                    .map(tx => {
-                    const from = (tx.fromAddress || 'N/A').substring(0, 8) + '...';
-                    const to = (tx.toAddress || 'N/A').substring(0, 8) + '...';
-                    const isReward = tx.fromAddress === 'SYSTEM_REWARD';
-                    const isBank = tx.fromAddress === 'BANK_ADMIN';
-
-                    return `
-                        <li class="${isReward || isBank ? 'reward-tx' : ''}">
-                            <span class="tx-amount">${tx.amount.toFixed(2)} BVN</span> 
-                            | From: <code title="From ID: ${tx.fromAddress}">${from}</code> 
-                            | To: <code title="To ID: ${tx.toAddress}">${to}</code>
-                            ${tx.message ? `<br>Message: <em>"${tx.message}"</em>` : ''}
-                        </li>`;
-                }).join('');
-
-                const blockHtml = `
-                    <div class="block-card ${block.hash.substring(0, MINING_DIFFICULTY) === Array(MINING_DIFFICULTY + 1).join("0") ? 'valid-block' : 'invalid-block'}">
-                        <div class="block-header">
-                            <strong>Block #${block.index}</strong> 
-                            <span class="difficulty-tag">PoW: ${MINING_DIFFICULTY}</span>
-                        </div>
-                        <div class="block-details">
-                            <div>Hash: <code title="${block.hash}">${block.hash.substring(0, 10)}...</code></div>
-                            <div>Prev. Hash: <code title="${block.previousHash}">${block.previousHash.substring(0, 10)}...</code></div>
-                            <div>Nonce: <strong>${block.nonce}</strong></div>
-                            <div>Time: ${new Date(block.timestamp).toLocaleTimeString()}</div>
-                        </div>
-                        
-                        <details>
-                            <summary>Transactions (${block.transactions.length})</summary>
-                            <ul class="tx-list">${txList}</ul>
-                        </details>
-                    </div>
-                `;
-                output.innerHTML += blockHtml;
-            });
-        }
-
-        function checkChainValidity(chain) {
-            let isValid = true;
-            for (let i = 1; i < chain.length; i++) {
-                const currentBlock = chain[i];
-                const previousBlock = chain[i - 1];
-
-                const target = Array(MINING_DIFFICULTY + 1).join("0");
-                
-                const tempBlock = new Block(
-                    currentBlock.index, 
-                    currentBlock.transactions, 
-                    currentBlock.previousHash
-                );
-                tempBlock.nonce = currentBlock.nonce;
-                const calculatedHash = tempBlock.calculateHash();
-
-                if (currentBlock.hash !== calculatedHash || currentBlock.hash.substring(0, MINING_DIFFICULTY) !== target) {
-                    isValid = false;
-                    break;
-                }
-                if (currentBlock.previousHash !== previousBlock.hash) {
-                    isValid = false;
-                    break;
-                }
-            }
-            document.getElementById('chain-valid').textContent = isValid ? '✅ TRUE' : '❌ FALSE';
-            document.getElementById('chain-valid').style.color = isValid ? 'var(--color-success)' : 'var(--color-danger)';
-        }
-
-        window.calculateAndDisplayBalance = (blocks = null) => {
-            if (!currentUserId || isAdmin) return;
-            
-            function calculate(walletAddress, chain) {
-                let balance = 0;
-                for (const block of chain) {
-                    for (const tx of block.transactions) {
-                        if (tx.isRequest) continue; 
-                        
-                        if (tx.fromAddress === walletAddress) {
-                            balance -= tx.amount;
-                        }
-                        if (tx.toAddress === walletAddress) {
-                            balance += tx.amount;
-                        }
-                    }
-                }
-                document.getElementById('current-balance').textContent = balance.toFixed(2);
-            }
-
-            if (!blocks) {
-                getDocs(CHAIN_REF).then(snapshot => {
-                    const fetchedBlocks = [];
-                    snapshot.forEach(doc => fetchedBlocks.push(doc.data()));
-                    fetchedBlocks.sort((a, b) => a.index - b.index);
-                    calculate(currentUserId, fetchedBlocks);
-                });
-            } else {
-                calculate(currentUserId, blocks);
-            }
-        }
-    </script>
     <style>
         /* New Color Palette: Cyber Gold / Neon Tech */
         :root {
@@ -778,9 +76,7 @@
             transform: none !important;
             vertical-align: middle;
         }
-        .copy-btn:hover {
-            color: var(--color-primary-accent);
-        }
+        .copy-btn:hover { color: var(--color-primary-accent); }
         .copy-status-inline {
             display: inline-block;
             font-size: 0.8em;
@@ -791,38 +87,17 @@
         /* Directory Styling */
         #user-directory-output { max-height: 250px; overflow-y: auto; background: var(--color-background-mid); padding: 10px; border-radius: 8px; }
         .directory-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #3c546b;
+            display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #3c546b;
         }
-        .directory-item:last-child {
-            border-bottom: none;
-        }
-        .user-name {
-            font-weight: bold;
-            color: var(--color-secondary-accent);
-            margin-right: 10px;
-        }
+        .directory-item:last-child { border-bottom: none; }
+        .user-name { font-weight: bold; color: var(--color-secondary-accent); margin-right: 10px; }
         .directory-copy-btn {
-            padding: 5px 10px;
-            font-size: 0.8em;
-            background-color: #4a6fa5;
-            box-shadow: none;
-            color: white;
+            padding: 5px 10px; font-size: 0.8em; background-color: #4a6fa5; box-shadow: none; color: white;
         }
-        .directory-copy-btn:hover {
-            background-color: #3b5a80;
-        }
+        .directory-copy-btn:hover { background-color: #3b5a80; }
         .user-details code {
-            background: var(--color-card);
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 0.8em;
-            word-break: break-all;
+            background: var(--color-card); padding: 2px 4px; border-radius: 3px; font-size: 0.8em; word-break: break-all;
         }
-
 
         /* Blockchain Display */
         #chain-output { max-height: 450px; overflow-y: scroll; background: var(--color-background-mid); padding: 10px; border-radius: 8px; }
@@ -858,52 +133,23 @@
 
         /* Personal History Styling */
         .history-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 400px;
-            overflow-y: auto;
-            padding: 5px;
+            display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding: 5px;
         }
         .history-item {
-            display: flex;
-            align-items: center;
-            background: var(--color-background-mid);
-            padding: 15px;
-            border-radius: 6px;
-            transition: background 0.2s;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            display: flex; align-items: center; background: var(--color-background-mid);
+            padding: 15px; border-radius: 6px; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
-        .history-item:hover {
-            background: #2A3A50;
-        }
+        .history-item:hover { background: #2A3A50; }
         .history-amount {
-            font-size: 1.4em;
-            font-weight: bold;
-            min-width: 120px;
-            text-align: right;
-            padding-right: 20px;
-            border-right: 2px solid #3c546b;
+            font-size: 1.4em; font-weight: bold; min-width: 120px; text-align: right; padding-right: 20px; border-right: 2px solid #3c546b;
         }
         .amount-in { color: var(--color-success); }
         .amount-out { color: var(--color-danger); }
 
-        .history-details {
-            padding-left: 20px;
-            flex-grow: 1;
-            font-size: 0.9em;
-        }
-        .history-status {
-            font-weight: bold;
-            margin-bottom: 3px;
-            font-size: 1.0em;
-        }
-        .history-time {
-            color: #a9a9a9;
-            font-size: 0.8em;
-            margin-top: 5px;
-        }
-        /* History Status Tags */
+        .history-details { padding-left: 20px; flex-grow: 1; font-size: 0.9em; }
+        .history-status { font-weight: bold; margin-bottom: 3px; font-size: 1.0em; }
+        .history-time { color: #a9a9a9; font-size: 0.8em; margin-top: 5px; }
+        
         .status-success { border-left: 5px solid var(--color-success); }
         .status-danger { border-left: 5px solid var(--color-danger); }
         .status-request-in { border-left: 5px solid var(--color-primary-accent); } 
@@ -929,8 +175,8 @@
 <div class="container">
     <h1>⛓️ BitVen - Secure Ledger</h1>
     <p style="color: var(--color-secondary-accent); text-align: center;">
-        **Mining Difficulty:** ${MINING_DIFFICULTY} leading zeros required (Proof-of-Work enforced). 
-        <br>Mining Reward: ${MINING_REWARD} BVN.
+        **Mining Difficulty:** <span id="difficulty-display">5</span> leading zeros required (Proof-of-Work enforced). 
+        <br>Mining Reward: <span id="reward-display">5</span> BVN.
     </p>
     
     <!-- AUTH SECTION -->
@@ -951,7 +197,7 @@
         <button onclick="window.calculateAndDisplayBalance()">Refresh Balance</button>
     </div>
 
-    <!-- USER DIRECTORY SECTION (NEW FEATURE) -->
+    <!-- USER DIRECTORY SECTION -->
     <div class="section">
         <h2>👥 User Directory</h2>
         <p style="font-size: 0.9em; color: var(--color-primary-accent);">Find other user's Wallet IDs to send payments.</p>
@@ -983,7 +229,7 @@
         <p>Pending Transactions (Ready to Mine): <span id="pending-tx-count">0</span></p>
         <button id="mine-btn" onclick="window.mineBlock()" disabled>Mine New Block</button>
         <p style="font-size: 0.9em; margin-top: 10px; color: var(--color-secondary-accent);">
-            **Warning:** Mining is CPU-intensive. Difficulty increased to ${MINING_DIFFICULTY} and Reward decreased to ${MINING_REWARD} BVN.
+            **Warning:** Mining is CPU-intensive. Difficulty increased to <span id="mining-difficulty-warning">5</span>.
         </p>
     </div>
 
@@ -1008,5 +254,720 @@
         </p>
     </div>
 </div>
+
+<script type="module">
+    // 1. FIREBASE CONFIG AND INITIALIZATION
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { 
+        getAuth, 
+        GoogleAuthProvider, 
+        signInWithPopup, 
+        onAuthStateChanged,
+        signOut,
+        signInWithCustomToken,
+        signInAnonymously
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { 
+        getFirestore, 
+        collection, 
+        getDocs, 
+        addDoc, 
+        query, 
+        orderBy, 
+        limit,
+        onSnapshot,
+        writeBatch,
+        doc,
+        setDoc,
+        serverTimestamp,
+        setLogLevel
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    setLogLevel('Debug');
+    
+    // Global Configuration
+    const ADMIN_EMAIL = 'lanushomeappliances@gmail.com'; 
+    const MINING_DIFFICULTY = 5; 
+    const MINING_REWARD = 5;   
+
+    // Environment-provided globals
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    let firebaseConfig = {};
+    try {
+        firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    } catch (e) {
+        console.error("Error parsing __firebase_config:", e);
+    }
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // Initial Authentication attempt
+    const attemptAuth = async () => {
+        try {
+            if (initialAuthToken) {
+                await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (e) {
+            console.error("Initial Authentication failed:", e);
+        }
+    };
+    attemptAuth();
+
+    // Firestore Collection References (Public data for shared blockchain and directory)
+    const CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain`);
+    const PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions`);
+    const USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles`);
+
+    // ====================================================================
+    // CORE BLOCKCHAIN CLASSES
+    // ====================================================================
+    
+    class Transaction {
+        // NOTE: timestamp is set to serverTimestamp() only when writing to Firestore
+        constructor(fromAddress, toAddress, amount, message = '', isRequest = false) {
+            this.fromAddress = fromAddress;
+            this.toAddress = toAddress;
+            this.amount = parseFloat(amount);
+            this.message = message;
+            this.isRequest = isRequest; 
+        }
+    }
+
+    class Block {
+        constructor(index, transactions, previousHash = '') {
+            this.index = index;
+            this.timestamp = Date.now(); // Client-side timestamp for hashing
+            this.transactions = transactions;
+            this.previousHash = previousHash;
+            this.nonce = 0; 
+            this.hash = this.calculateHash();
+        }
+
+        calculateHash() {
+            return CryptoJS.SHA256(
+                this.index + 
+                this.previousHash + 
+                this.timestamp + 
+                this.nonce + 
+                JSON.stringify(this.transactions)
+            ).toString();
+        }
+
+        mineBlock(difficulty) {
+            const target = Array(difficulty + 1).join("0"); 
+            while (this.hash.substring(0, difficulty) !== target) {
+                this.nonce++;
+                this.hash = this.calculateHash();
+            }
+            console.log("BLOCK MINED:", this.hash);
+        }
+    }
+
+    // ====================================================================
+    // GLOBAL STATE & AUTHENTICATION
+    // ====================================================================
+    
+    let currentUserId = null;
+    let isAdmin = false;
+    let blocksData = [];
+    let pendingSnapshotData = null;
+
+    window.signInWithGoogle = () => {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' }); 
+        signInWithPopup(auth, provider)
+          .catch((error) => console.error("Google Sign-In Error:", error));
+    };
+
+    window.signOutUser = () => {
+        signOut(auth).catch((error) => console.error("Sign Out Error:", error));
+    };
+
+    window.copyIdToClipboard = (idToCopy, statusElementId = 'copy-status') => {
+        const statusEl = document.getElementById(statusElementId);
+        
+        if (idToCopy) {
+            try {
+                // Fallback for clipboard access within iframe constraints
+                const el = document.createElement('textarea');
+                el.value = idToCopy;
+                el.style.position = 'fixed'; // Avoid scrolling to bottom
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                
+                statusEl.textContent = '✅ ID copied!';
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+                statusEl.textContent = '❌ Failed to copy ID.';
+            }
+        }
+    };
+
+    window.copyWalletId = () => {
+        const walletId = document.getElementById('wallet-id').textContent;
+        window.copyIdToClipboard(walletId);
+    }
+
+
+    onAuthStateChanged(auth, (user) => {
+        const signInBtn = document.getElementById('sign-in-btn');
+        const signOutBtn = document.getElementById('sign-out-btn');
+        const walletIdCode = document.getElementById('wallet-id');
+        const statusSpan = document.getElementById('auth-status');
+        const txContainer = document.getElementById('transaction-container');
+        
+        if (user && user.isAnonymous === false) {
+            currentUserId = user.uid;
+            isAdmin = user.email === ADMIN_EMAIL;
+            
+            // Update User Profile for Directory
+            const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
+            setDoc(userProfileRef, {
+                uid: user.uid,
+                displayName: user.displayName || 'Anonymous User',
+                lastSeen: serverTimestamp()
+            }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
+
+            // Update UI
+            walletIdCode.textContent = currentUserId;
+            statusSpan.innerHTML = `${user.displayName || 'Wallet User'} <span class="tag ${isAdmin ? 'admin-tag' : 'user-tag'}">${isAdmin ? 'BANK ADMIN' : 'USER'}</span>`;
+            signInBtn.style.display = 'none';
+            signOutBtn.style.display = 'inline-block';
+            document.getElementById('copy-status').textContent = '';
+
+            if (isAdmin) {
+                txContainer.innerHTML = `
+                    <div class="section">
+                        <h2>🏦 Admin (Bank) Distribution</h2>
+                        <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" class="input-full">
+                        <input type="number" id="amount" placeholder="Amount (BVN)" value="1000" min="1" step="any" class="input-half">
+                        <button id="distribute-btn" onclick="window.issueFunds()" class="bank-btn">Issue/Distribute Funds</button>
+                        <p id="tx-status" style="color: var(--color-success); margin-top: 10px;">You are the Bank. Your balance is UNLIMITED.</p>
+                    </div>
+                `;
+                document.getElementById('current-balance').textContent = 'UNLIMITED';
+                document.getElementById('mine-btn').disabled = true; 
+            } else {
+                txContainer.innerHTML = `
+                    <div class="section">
+                        <h2>💸 Send BitVen</h2>
+                        <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" class="input-full">
+                        <input type="number" id="amount" placeholder="Amount (BVN)" value="1" min="0.01" step="any" class="input-half">
+                        <input type="text" id="message" placeholder="Optional Message (e.g., 'Payment for service')" class="input-half">
+                        <button id="send-btn" onclick="window.sendTransaction()">Submit Transaction</button>
+                        <p id="tx-status" style="color: var(--color-primary-accent); margin-top: 10px;"></p>
+                    </div>
+
+                    <div class="section request-section">
+                        <h2>✍️ Request Funds (Invoice)</h2>
+                        <input type="text" id="debtor-id" placeholder="Debtor Wallet ID (UID)" class="input-full">
+                        <input type="number" id="request-amount" placeholder="Amount to Request (BVN)" value="5" min="0.01" step="any" class="input-half">
+                        <input type="text" id="request-message" placeholder="Reason for Invoice" class="input-half">
+                        <button id="request-btn" onclick="window.requestFunds()" class="request-btn">Create Invoice</button>
+                        <p id="request-status" style="color: var(--color-secondary-accent); margin-top: 10px;"></p>
+                    </div>
+                `;
+                window.calculateAndDisplayBalance(blocksData); 
+                document.getElementById('mine-btn').disabled = false;
+                window.displayPersonalHistory(blocksData, pendingSnapshotData);
+            }
+        } else {
+            // Signed out or Anonymous
+            currentUserId = null;
+            isAdmin = false;
+            walletIdCode.textContent = 'N/A (Sign in to get a wallet ID)';
+            statusSpan.innerHTML = 'Signed Out';
+            document.getElementById('current-balance').textContent = '0.00';
+            signInBtn.style.display = 'inline-block';
+            signOutBtn.style.display = 'none';
+            txContainer.innerHTML = '<div class="section"><p>Please sign in to view transactions or mine.</p></div>';
+            document.getElementById('mine-btn').disabled = true;
+            document.getElementById('copy-status').textContent = '';
+            document.getElementById('personal-history-output').innerHTML = '<p class="no-requests">Sign in to see your history.</p>';
+        }
+    });
+
+    // ====================================================================
+    // TRANSACTION & MINING FUNCTIONS
+    // ====================================================================
+
+    window.issueFunds = async () => {
+        if (!isAdmin) return;
+
+        const toAddress = document.getElementById('recipient-id').value.trim();
+        const amount = parseFloat(document.getElementById('amount').value);
+        const txStatus = document.getElementById('tx-status');
+        
+        if (!toAddress || isNaN(amount) || amount <= 0) {
+            txStatus.textContent = "Error: Invalid recipient or amount.";
+            return;
+        }
+
+        const newTx = new Transaction('BANK_ADMIN', toAddress, amount, 'Bank Distribution', false);
+        
+        try {
+            await addDoc(PENDING_TX_REF, { ...newTx, timestamp: serverTimestamp() });
+            txStatus.textContent = `BANK: Successfully issued ${amount} BVN to ${toAddress.substring(0, 8)}... (Pending mining)`;
+            document.getElementById('recipient-id').value = '';
+        } catch (e) {
+            txStatus.textContent = "Error issuing funds: " + e.message;
+            console.error("Error issuing funds: ", e);
+        }
+    }
+
+    window.sendTransaction = async () => {
+        if (isAdmin || !currentUserId) return; 
+
+        const toAddress = document.getElementById('recipient-id').value.trim();
+        const amount = parseFloat(document.getElementById('amount').value);
+        const message = document.getElementById('message').value.trim();
+        const txStatus = document.getElementById('tx-status');
+        
+        if (!toAddress || isNaN(amount) || amount <= 0) { txStatus.textContent = "Error: Invalid recipient or amount."; return; }
+
+        // Simplification: Actual balance check is omitted here, pending mining will fail if funds are insufficient
+        const newTx = new Transaction(currentUserId, toAddress, amount, message, false);
+        
+        try {
+            await addDoc(PENDING_TX_REF, { ...newTx, timestamp: serverTimestamp() });
+            txStatus.textContent = `Transaction submitted! To: ${toAddress.substring(0, 8)}... for ${amount} BVN. (Pending mining)`;
+            document.getElementById('recipient-id').value = '';
+            document.getElementById('amount').value = '1';
+            document.getElementById('message').value = '';
+
+        } catch (e) {
+            txStatus.textContent = "Error submitting transaction: " + e.message;
+            console.error("Error submitting transaction: ", e);
+        }
+    };
+
+    window.requestFunds = async () => {
+        if (isAdmin || !currentUserId) return; 
+        
+        const debtorId = document.getElementById('debtor-id').value.trim();
+        const amount = parseFloat(document.getElementById('request-amount').value);
+        const message = document.getElementById('request-message').value.trim();
+        const requestStatus = document.getElementById('request-status');
+        
+        if (!debtorId || isNaN(amount) || amount <= 0) { requestStatus.textContent = "Error: Invalid debtor or amount."; return; }
+        if (debtorId === currentUserId) { requestStatus.textContent = "Error: Cannot invoice yourself."; return; }
+
+        const requestTx = new Transaction(debtorId, currentUserId, amount, `INVOICE: ${message}`, true);
+        
+        try {
+            await addDoc(PENDING_TX_REF, { ...requestTx, timestamp: serverTimestamp() });
+            requestStatus.textContent = `Invoice created for ${debtorId.substring(0, 8)}... for ${amount} BVN. (Pending mining)`;
+            document.getElementById('debtor-id').value = '';
+            document.getElementById('request-amount').value = '5';
+            document.getElementById('request-message').value = '';
+
+        } catch (e) {
+            requestStatus.textContent = "Error submitting request: " + e.message;
+            console.error("Error submitting request: ", e);
+        }
+    };
+
+
+    window.mineBlock = async () => {
+        if (isAdmin || !currentUserId) return;
+
+        const mineBtn = document.getElementById('mine-btn');
+        mineBtn.disabled = true;
+        mineBtn.textContent = "Mining... (CPU working hard!)";
+
+        // 1. Get ONLY non-request Pending Transactions
+        const txQuery = query(PENDING_TX_REF, orderBy('timestamp'));
+        const txSnapshot = await getDocs(txQuery);
+        
+        const transactionsToMine = txSnapshot.docs
+            .filter(doc => !doc.data().isRequest)
+            .map(doc => doc.data());
+        
+        if (transactionsToMine.length === 0) {
+             mineBtn.textContent = "No transactions. Mine Block";
+             mineBtn.disabled = false;
+             return;
+        }
+
+        // 2. Get Last Block Hash and Index
+        let previousHash = Array(MINING_DIFFICULTY + 1).join("0") + 'GENESIS_HASH'; 
+        let nextIndex = 0;
+        
+        const lastBlockQuery = query(CHAIN_REF, orderBy('index', 'desc'), limit(1));
+        const lastBlockSnapshot = await getDocs(lastBlockQuery);
+
+        lastBlockSnapshot.forEach(doc => {
+            const lastBlock = doc.data();
+            previousHash = lastBlock.hash;
+            nextIndex = lastBlock.index + 1;
+        });
+        
+        // 3. Add Mining Reward Transaction
+        const rewardTx = new Transaction('SYSTEM_REWARD', currentUserId, MINING_REWARD, 'Mining Reward', false);
+        transactionsToMine.push(rewardTx);
+
+        // 4. Create and Mine New Block
+        const newBlock = new Block(nextIndex, transactionsToMine, previousHash);
+        newBlock.mineBlock(MINING_DIFFICULTY); 
+
+        // 5. Commit to Firestore (Atomic Batch Write)
+        const batch = writeBatch(db);
+
+        // A. Add the new block to the chain (Firestore will add its own serverTimestamp)
+        batch.set(doc(CHAIN_REF), { ...newBlock, timestamp: serverTimestamp() });
+
+        // B. Delete all PENDING transactions that were just mined (matching transaction data)
+        txSnapshot.docs.filter(doc => !doc.data().isRequest).forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        try {
+            await batch.commit();
+            console.log(`Block ${newBlock.index} successfully mined!`);
+        } catch (e) {
+            console.error("Error mining block:", e);
+        } finally {
+            mineBtn.textContent = "Mine New Block";
+            mineBtn.disabled = false;
+        }
+    };
+    
+    // ====================================================================
+    // DATA DISPLAY & LISTENERS
+    // ====================================================================
+
+    // Real-time listener for the Blockchain
+    onSnapshot(CHAIN_REF, (snapshot) => {
+        blocksData = [];
+        snapshot.forEach(doc => blocksData.push(doc.data()));
+        
+        blocksData.sort((a, b) => a.index - b.index);
+
+        displayChain(blocksData);
+        checkChainValidity(blocksData);
+        if (currentUserId && !isAdmin) {
+            window.calculateAndDisplayBalance(blocksData);
+            window.displayPersonalHistory(blocksData, pendingSnapshotData);
+        }
+    }, (error) => console.error("Blockchain Snapshot Error:", error));
+    
+    // Real-time listener for Pending Transactions
+    onSnapshot(PENDING_TX_REF, (snapshot) => {
+        pendingSnapshotData = snapshot;
+        const realTxCount = snapshot.docs.filter(doc => !doc.data().isRequest).length;
+        document.getElementById('pending-tx-count').textContent = realTxCount;
+
+        if (currentUserId && !isAdmin) {
+            const requests = snapshot.docs
+                .map(doc => ({...doc.data(), id: doc.id}))
+                .filter(tx => tx.isRequest && tx.fromAddress === currentUserId);
+            displayRequests(requests);
+            window.displayPersonalHistory(blocksData, pendingSnapshotData);
+        }
+    }, (error) => console.error("Pending TX Snapshot Error:", error));
+
+    // Real-time listener for the User Directory
+    onSnapshot(USER_PROFILE_REF, (snapshot) => {
+        const users = [];
+        snapshot.forEach(doc => users.push(doc.data()));
+        displayUserDirectory(users);
+    }, (error) => console.error("User Directory Snapshot Error:", error));
+
+    // --- Directory Function ---
+    function displayUserDirectory(users) {
+        const output = document.getElementById('user-directory-output');
+        if (!output) return;
+
+        const currentUsers = users.filter(u => u.uid !== currentUserId);
+
+        if (currentUsers.length === 0) {
+            output.innerHTML = '<p class="no-requests">No other active users found.</p>';
+            return;
+        }
+
+        output.innerHTML = currentUsers.map(user => {
+            const uidShort = user.uid.substring(0, 10) + '...';
+            const statusElementId = `copy-status-dir-${user.uid}`;
+            
+            return `
+                <div class="directory-item">
+                    <div class="user-details">
+                        <span class="user-name">${user.displayName || 'Anon User'}</span>
+                        <code title="Wallet ID: ${user.uid}">${uidShort}</code>
+                        <p id="${statusElementId}" class="copy-status-inline"></p>
+                    </div>
+                    <button class="directory-copy-btn" 
+                            onclick="window.copyIdToClipboard('${user.uid}', '${statusElementId}')">
+                        Copy ID
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // --- Request/Invoice Functions ---
+
+    function displayRequests(requests) {
+        const output = document.getElementById('pending-requests-output');
+        if (!output) return; 
+        
+        // Filter: only show requests *sent to* the current user (where current user is the requester/toAddress)
+        const receivedRequests = requests.filter(req => req.toAddress === currentUserId);
+
+        if (receivedRequests.length === 0) {
+            output.innerHTML = '<p class="no-requests">No pending invoices sent to you. Time to get paid!</p>';
+            return;
+        }
+
+        output.innerHTML = receivedRequests.map(req => {
+            const debtor = (req.fromAddress || 'N/A').substring(0, 10) + '...';
+            return `
+                <div class="request-card">
+                    <span class="request-amount">${req.amount.toFixed(2)} BVN</span> requested from: 
+                    <code title="Debtor ID: ${req.fromAddress}">${debtor}</code>
+                    <p class="request-msg">${req.message.replace('INVOICE: ', '')}</p>
+                    <button class="pay-request-btn" 
+                            onclick="window.populateSendForm('${req.fromAddress}', ${req.amount.toFixed(2)})">
+                        Pay Invoice
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    window.populateSendForm = (recipientId, amount) => {
+        document.getElementById('recipient-id').value = recipientId;
+        document.getElementById('amount').value = amount;
+        // Scroll the transaction container into view
+        document.getElementById('transaction-container').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // --- Personal History Function ---
+    window.displayPersonalHistory = (blocks = [], pendingSnapshot = null) => {
+        if (!currentUserId || isAdmin) return;
+
+        let history = [];
+
+        // 1. Mined Transactions (from Blocks)
+        blocks.forEach(block => {
+            block.transactions.forEach(tx => {
+                // Ensure the transaction has an amount (filter out requests if they somehow made it here)
+                if (tx.amount && (tx.fromAddress === currentUserId || tx.toAddress === currentUserId)) {
+                    const status = tx.fromAddress === 'SYSTEM_REWARD' ? 'MINED (Reward)' : (tx.fromAddress === 'BANK_ADMIN' ? 'MINED (Bank)' : 'MINED');
+                    // Use block's timestamp for mined transactions
+                    history.push({ ...tx, status: status, blockIndex: block.index, timestamp: new Date(block.timestamp) });
+                }
+            });
+        });
+
+        // 2. Pending Activity (from Pending TX Snapshot)
+        if (pendingSnapshot) {
+            pendingSnapshot.docs.forEach(doc => {
+                const tx = doc.data();
+                // Get timestamp safely (use current time if serverTimestamp hasn't resolved or is missing)
+                const timestamp = doc.data().timestamp && doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(); 
+                
+                if (tx.isRequest) {
+                    if (tx.fromAddress === currentUserId) {
+                        history.push({ ...tx, status: 'REQUEST (Sent)', timestamp: timestamp });
+                    } else if (tx.toAddress === currentUserId) {
+                        history.push({ ...tx, status: 'REQUEST (Received)', timestamp: timestamp });
+                    }
+                } else {
+                    if (tx.fromAddress === currentUserId) {
+                        history.push({ ...tx, status: 'PENDING (Sent)', timestamp: timestamp });
+                    } else if (tx.toAddress === currentUserId) {
+                        history.push({ ...tx, status: 'PENDING (Received)', timestamp: timestamp });
+                    }
+                }
+            });
+        }
+
+        history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+        const output = document.getElementById('personal-history-output');
+        if (!output) return;
+
+        if (history.length === 0) {
+            output.innerHTML = '<p class="no-requests">No transactions or requests found in your history.</p>';
+            return;
+        }
+
+        output.innerHTML = history.map(item => {
+            const isOutbound = item.fromAddress === currentUserId && !item.isRequest;
+            const isRequestSent = item.isRequest && item.fromAddress !== currentUserId;
+            
+            let direction, addressCode, amountClass, statusClass;
+
+            if (item.status.includes('MINED') || item.status.includes('Received')) {
+                amountClass = 'amount-in';
+                
+                if (item.status.includes('REQUEST')) {
+                    direction = 'INVOICE FROM:';
+                    addressCode = item.fromAddress;
+                    statusClass = 'status-request-in';
+                } else if (item.fromAddress === 'SYSTEM_REWARD' || item.fromAddress === 'BANK_ADMIN') {
+                    direction = 'FROM:';
+                    addressCode = item.fromAddress;
+                    statusClass = 'status-success';
+                } else {
+                    direction = 'FROM:';
+                    addressCode = item.fromAddress;
+                    statusClass = item.status.includes('MINED') ? 'status-success' : 'status-pending-in';
+                }
+            } else { // Outbound or Sent Request
+                amountClass = 'amount-out';
+                
+                if (item.status.includes('REQUEST')) {
+                    direction = 'INVOICED:';
+                    addressCode = item.toAddress; 
+                    statusClass = 'status-request-out';
+                } else {
+                    direction = 'TO:';
+                    addressCode = item.toAddress;
+                    statusClass = item.status.includes('MINED') ? 'status-danger' : 'status-pending-out';
+                }
+            }
+            
+            const displayAddress = (addressCode || 'N/A').substring(0, 10) + '...';
+            const displayMessage = item.message.replace('INVOICE: ', '') || 'N/A';
+
+            return `
+                <div class="history-item ${statusClass}">
+                    <div class="history-amount ${amountClass}">${isOutbound || isRequestSent ? '-' : '+'}${item.amount.toFixed(2)} BVN</div>
+                    <div class="history-details">
+                        <div class="history-status">${item.status} ${item.blockIndex ? `(Block #${item.blockIndex})` : ''}</div>
+                        <div class="history-address">${direction} <code title="${addressCode}">${displayAddress}</code></div>
+                        <div class="history-message">Message: <em>${displayMessage}</em></div>
+                        <div class="history-time">${item.timestamp.toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // --- Balance Calculation (Updated to use collected block data) ---
+    window.calculateAndDisplayBalance = (blocks = null) => {
+        if (!currentUserId || isAdmin) return;
+        
+        function calculate(walletAddress, chain) {
+            let balance = 0;
+            for (const block of chain) {
+                for (const tx of block.transactions) {
+                    if (tx.isRequest) continue; 
+                    
+                    if (tx.fromAddress === walletAddress) {
+                        balance -= tx.amount;
+                    }
+                    if (tx.toAddress === walletAddress) {
+                        balance += tx.amount;
+                    }
+                }
+            }
+            document.getElementById('current-balance').textContent = balance.toFixed(2);
+        }
+
+        if (blocks) {
+            calculate(currentUserId, blocks);
+        } else {
+            // Fallback for manual refresh button click
+            getDocs(CHAIN_REF).then(snapshot => {
+                const fetchedBlocks = [];
+                snapshot.forEach(doc => fetchedBlocks.push(doc.data()));
+                fetchedBlocks.sort((a, b) => a.index - b.index);
+                calculate(currentUserId, fetchedBlocks);
+            });
+        }
+    }
+
+    // --- Chain Display and Validation (Simplified) ---
+    function displayChain(blocks) {
+        // ... (implementation is the same as previous) ...
+        const output = document.getElementById('chain-output');
+        output.innerHTML = '';
+        document.getElementById('chain-length').textContent = blocks.length;
+
+        blocks.forEach(block => {
+            const txList = block.transactions
+                .filter(tx => !tx.isRequest) 
+                .map(tx => {
+                const from = (tx.fromAddress || 'N/A').substring(0, 8) + '...';
+                const to = (tx.toAddress || 'N/A').substring(0, 8) + '...';
+                const isReward = tx.fromAddress === 'SYSTEM_REWARD';
+                const isBank = tx.fromAddress === 'BANK_ADMIN';
+
+                return `
+                    <li class="${isReward || isBank ? 'reward-tx' : ''}">
+                        <span class="tx-amount">${tx.amount.toFixed(2)} BVN</span> 
+                        | From: <code title="From ID: ${tx.fromAddress}">${from}</code> 
+                        | To: <code title="To ID: ${tx.toAddress}">${to}</code>
+                        ${tx.message ? `<br>Message: <em>"${tx.message}"</em>` : ''}
+                    </li>`;
+            }).join('');
+
+            const blockHtml = `
+                <div class="block-card ${block.hash.substring(0, MINING_DIFFICULTY) === Array(MINING_DIFFICULTY + 1).join("0") ? 'valid-block' : 'invalid-block'}">
+                    <div class="block-header">
+                        <strong>Block #${block.index}</strong> 
+                        <span class="difficulty-tag">PoW: ${MINING_DIFFICULTY}</span>
+                    </div>
+                    <div class="block-details">
+                        <div>Hash: <code title="${block.hash}">${block.hash.substring(0, 10)}...</code></div>
+                        <div>Prev. Hash: <code title="${block.previousHash}">${block.previousHash.substring(0, 10)}...</code></div>
+                        <div>Nonce: <strong>${block.nonce}</strong></div>
+                        <div>Time: ${new Date(block.timestamp).toLocaleTimeString()}</div>
+                    </div>
+                    
+                    <details>
+                        <summary>Transactions (${block.transactions.length})</summary>
+                        <ul class="tx-list">${txList}</ul>
+                    </details>
+                </div>
+            `;
+            output.innerHTML += blockHtml;
+        });
+    }
+
+    function checkChainValidity(chain) {
+        // ... (implementation is the same as previous) ...
+        let isValid = true;
+        for (let i = 1; i < chain.length; i++) {
+            const currentBlock = chain[i];
+            const previousBlock = chain[i - 1];
+
+            const target = Array(MINING_DIFFICULTY + 1).join("0");
+            
+            const tempBlock = new Block(
+                currentBlock.index, 
+                currentBlock.transactions, 
+                currentBlock.previousHash
+            );
+            tempBlock.nonce = currentBlock.nonce;
+            const calculatedHash = tempBlock.calculateHash();
+
+            if (currentBlock.hash !== calculatedHash || currentBlock.hash.substring(0, MINING_DIFFICULTY) !== target) {
+                isValid = false;
+                break;
+            }
+            if (currentBlock.previousHash !== previousBlock.hash) {
+                isValid = false;
+                break;
+            }
+        }
+        document.getElementById('chain-valid').textContent = isValid ? '✅ TRUE' : '❌ FALSE';
+        document.getElementById('chain-valid').style.color = isValid ? 'var(--color-success)' : 'var(--color-danger)';
+    }
+
+</script>
+
 </body>
 </html>
