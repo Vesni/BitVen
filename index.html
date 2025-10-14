@@ -3,30 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The BitVen Wallet (BVN) - Clean Ledger</title>
+    <title>The BitVen Wallet (BVN) - Blockchain Ledger</title>
     <!-- Include crypto-js for SHA256 Hashing (Used in Proof-of-Work) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
         /* ================================================= */
-        /* CSS Reset and Bright Theme Variables (No glow) */
+        /* CSS Reset and Bright Theme Variables */
         /* ================================================= */
         :root {
             --color-primary-accent: #2563EB; /* Blue 600 */
             --color-secondary-accent: #CA8A04; /* Yellow 700 */
-            --color-background-light: #F9FAFB; /* Very Light Background */
-            --color-card-light: #FFFFFF; /* White Card Background */
-            --color-text-dark: #1F2937; /* Dark Gray Text */
-            --color-text-subtle: #6B7280; /* Subtle Gray Text */
-            --color-border: #E5E7EB; /* Light Gray Border */
-            --color-success: #10B981; /* Green Success */
-            --color-danger: #EF4444; /* Red Danger */
+            --color-background-light: #F9FAFB;
+            --color-card-light: #FFFFFF;
+            --color-text-dark: #1F2937;
+            --color-text-subtle: #6B7280;
+            --color-border: #E5E7EB;
+            --color-success: #10B981;
+            --color-danger: #EF4444;
             --color-info: #6366F1; /* Indigo Info - Used for Admin highlight */
-            
-            /* Game/Ledger Constants */
-            --tx-fee: 0.01; 
-            --mining-difficulty: 5;
-            --mining-reward: 0; 
         }
 
         body { 
@@ -98,10 +95,10 @@
             margin-right: 10px; 
             transition: all 0.2s ease; 
             font-weight: 600;
-            box-shadow: 0 4px 0 #1D4ED8; /* Darker blue for shadow */
+            box-shadow: 0 4px 0 #1D4ED8;
         }
         button:hover:not(:disabled) { 
-            background-color: #1D4ED8; /* Slightly darker primary on hover */
+            background-color: #1D4ED8;
             box-shadow: 0 2px 0 #1D4ED8; 
             transform: translateY(2px); 
         }
@@ -149,7 +146,7 @@
 <body>
 
 <div class="container">
-    <h1>⛓️ BitVen Blockchain Ledger (v3)</h1>
+    <h1>⛓️ BitVen Blockchain Ledger (v4)</h1>
     
     <!-- ADMIN INSTRUCTION BAR -->
     <div style="padding: 10px; margin-bottom: 20px; border-radius: 8px; background: #FEF3C7; border: 1px solid #FCD34D;">
@@ -167,7 +164,6 @@
                 <div class="balance-display"><span id="current-balance">0.00</span> BVN</div>
             </div>
             <div>
-                <!-- FIXED: Calls global window functions -->
                 <button id="sign-in-btn" onclick="window.signInWithGoogle()">Sign In/Wallet Login</button>
                 <button id="sign-out-btn" onclick="window.signOutUser()" style="display: none;">Sign Out</button>
                 <button onclick="window.calculateAndDisplayBalance(window.blocksData)" style="margin-left: 10px;">Refresh Balance</button>
@@ -175,9 +171,8 @@
         </div>
         <div id="wallet-id-container">
             <strong>Active Wallet ID:</strong> <code id="wallet-id">N/A</code>
-            <!-- FIXED: Calls global window functions -->
             <button class="copy-btn" onclick="window.copyWalletId()" title="Copy ID" style="padding: 6px 10px; margin-left: 10px; font-size: 0.8em;">📋</button>
-            <span id="auth-status" style="margin-left: 20px; font-weight: 600; color: var(--color-danger);">Signed Out</span>
+            <span id="auth-status" style="margin-left: 20px; font-weight: 600; color: var(--color-danger);">Loading...</span>
             <span id="copy-status" style="font-size: 0.8em; margin-left: 10px; color: var(--color-success);"></span>
         </div>
     </div>
@@ -197,7 +192,6 @@
                 <p style="color: var(--color-text-subtle);">
                     Pending Transactions: <span id="pending-tx-count">0</span> | Total Fees in Pool: <strong id="fees-pool">0.00</strong> BVN
                 </p>
-                <!-- FIXED: Calls global window functions -->
                 <button id="mine-btn" onclick="window.mineBlock()" disabled>
                     Mine Block (Start Calculation)
                 </button>
@@ -210,13 +204,12 @@
                 <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID) or Burn Address" class="input-full">
                 <input type="number" id="amount" placeholder="Amount (BVN)" value="1.00" min="0.01" step="any" class="input-half">
                 <input type="text" id="message" placeholder="Optional Memo/Reason" class="input-half">
-                <!-- FIXED: Calls global window functions -->
                 <button id="send-btn" onclick="window.sendTransaction()">Submit Transaction</button>
                 <button id="request-btn" onclick="window.toggleRequestMode()" style="background-color: var(--color-info); box-shadow: 0 4px 0 #4F46E5;">
                     Switch to Invoice Request
                 </button>
                 <p style="font-size: 0.8em; color: var(--color-text-subtle); margin-top: 5px;">
-                    <strong style="color: var(--color-danger);">NOTE:</strong> All transactions require a ${TX_FEE} BVN fee. The **Burn Address** is permanent.
+                    <strong style="color: var(--color-danger);">NOTE:</strong> All transactions require a <span id="note-fee">0.01</span> BVN fee. The **Burn Address** is permanent.
                 </p>
                 <p id="tx-status" style="color: var(--color-primary-accent); margin-top: 10px; font-weight: 600;"></p>
             </div>
@@ -272,8 +265,6 @@
         onSnapshot, writeBatch, doc, setDoc, serverTimestamp, setLogLevel
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    setLogLevel('Debug');
-    
     // --- LEDGER CONSTANTS & ADMIN CONFIGURATION ---
     const BURN_ADDRESS = 'BVN_BURN_ADDRESS_0x0000000000000000000000000000000000000000';
     const MINING_DIFFICULTY = 5; 
@@ -281,69 +272,138 @@
     const TX_FEE = 0.01;
 
     // !!! ADMINISTRATOR CONFIGURATION !!!
+    // REPLACE THIS WITH YOUR ACTUAL UID AFTER SIGNING IN ONCE WITH GOOGLE
     const MASTER_ADMIN_UID = 'REPLACE_THIS_WITH_YOUR_ACTUAL_ADMIN_UID'; 
     const UNLIMITED_BALANCE = 999999999.00;
 
-    // Environment-provided globals (will be available even if Firebase fails)
+    // --- REQUIRED GLOBAL VARIABLES (From Environment) ---
+    // __app_id and __initial_auth_token are required by the environment for security/context
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    
+    // --- USER-PROVIDED FIREBASE CONFIGURATION (FOR PROJECT ID: bitven-6d42c) ---
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig", 
+        authDomain: "bitven-6d42c.firebaseapp.com", 
+        projectId: "bitven-6d42c", 
+        storageBucket: "bitven-6d42c.firebasestorage.app", 
+        messagingSenderId: "511584242303", 
+        appId: "1:511584242303:web:bdfeac7801c4d17b254d4a" 
+    };
 
-    // Firebase instances (initialized later)
-    let db = null;
+    // --- Firebase Instances (Initialized later) ---
+    let app = null;
     let auth = null;
+    let db = null;
+    
+    // --- Firestore Collection References ---
     let CHAIN_REF = null;
     let PENDING_TX_REF = null;
     let USER_PROFILE_REF = null;
 
-    // App State
+    // --- App State ---
     let currentUserId = null;
     let isAuthReady = false;
     let isRequestMode = false;
     window.blocksData = []; // Expose globally for the "Refresh Balance" button
     let userProfiles = [];
-
-    // --- CRITICAL FIX: Robust Firebase Initialization ---
-    let firebaseConfig = {};
-    try {
-        const configString = typeof __firebase_config === 'string' && __firebase_config.trim() !== '' 
-            ? __firebase_config : null;
-            
-        if (configString) {
-            firebaseConfig = JSON.parse(configString); 
-            
-            // Check for critical missing project ID (Fixes the root FirebaseError)
-            if (!firebaseConfig.projectId) {
-                console.error("Firebase config is missing projectId. Initializing stopped.");
-                firebaseConfig = {}; // Clear config if invalid
-            }
-        }
-    } catch (e) {
-        console.error("Error parsing __firebase_config:", e);
-        // Do not proceed with initialization
-    }
-
-    if (Object.keys(firebaseConfig).length > 0) {
+    
+    // --- CORE INITIALIZATION ---
+    async function initializeFirebase() {
         try {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
+            if (!firebaseConfig || !firebaseConfig.projectId) {
+                document.getElementById('auth-status').textContent = 'ERROR: Firebase config missing.';
+                throw new Error("Missing or invalid firebaseConfig.");
+            }
             
-            // Define references ONLY after db is successfully initialized
+            // 1. Initialize App and Services
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            setLogLevel('Debug');
+            
+            // 2. Define References
+            // Collections are scoped to the canvas application ID (__app_id) for isolation
             CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain_v2`);
             PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions_v2`);
             USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles_v2`);
-            
-        } catch (e) {
-            console.error("Firebase app initialization failed, despite config being present:", e);
-            db = null; // Ensure db is explicitly null if initialization failed
+
+            // 3. Mandatory Authentication Listener
+            onAuthStateChanged(auth, async (user) => {
+                const mineBtn = document.getElementById('mine-btn');
+                const signInBtn = document.getElementById('sign-in-btn');
+                const signOutBtn = document.getElementById('sign-out-btn');
+                const walletIdCode = document.getElementById('wallet-id');
+                const statusSpan = document.getElementById('auth-status');
+
+                if (user) {
+                    currentUserId = user.uid;
+                    isAuthReady = true;
+
+                    // A. Update User Profile if signed in via Google
+                    if (user.isAnonymous === false) {
+                        const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
+                        await setDoc(userProfileRef, { 
+                            uid: user.uid, 
+                            displayName: user.displayName || 'Wallet User', 
+                            lastSeen: serverTimestamp() 
+                        }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
+                        
+                        walletIdCode.textContent = currentUserId;
+                        statusSpan.innerHTML = `Signed In: ${user.displayName || 'User'}`;
+                        signInBtn.style.display = 'none';
+                        signOutBtn.style.display = 'inline-block';
+                    } else {
+                        // Anonymous User
+                        walletIdCode.textContent = currentUserId.substring(0, 15) + '... (Anon)';
+                        statusSpan.innerHTML = 'Anonymous';
+                        signInBtn.style.display = 'inline-block';
+                        signOutBtn.style.display = 'inline-block';
+                    }
+
+                    // B. Common UI Update
+                    statusSpan.style.color = 'var(--color-primary-accent)';
+                    mineBtn.disabled = false;
+                    
+                    // C. Start Firestore Listeners only after auth is confirmed
+                    setupListeners();
+                    window.calculateAndDisplayBalance(window.blocksData); 
+                    
+                } else {
+                    // User is signed out, attempt mandatory sign-in
+                    currentUserId = null;
+                    isAuthReady = false;
+                    walletIdCode.textContent = 'N/A';
+                    statusSpan.innerHTML = 'Signed Out';
+                    statusSpan.style.color = 'var(--color-danger)';
+                    document.getElementById('current-balance').textContent = '0.00';
+                    document.querySelector('.balance-label').textContent = 'Current Balance'; 
+                    signInBtn.style.display = 'inline-block';
+                    signOutBtn.style.display = 'none';
+                    mineBtn.disabled = true;
+
+                    try {
+                        // MANDATORY: Sign in with custom token or anonymously
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Initial Authentication failed:", error);
+                        statusSpan.innerHTML = `Auth Failed.`;
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("FATAL Firebase Initialization Error:", error);
+            document.getElementById('auth-status').textContent = `FATAL INIT ERROR: ${error.message}`;
         }
-    } else {
-        console.error("Firebase config is missing or invalid. Application will not connect to Firestore.");
     }
 
-
     // ====================================================================
-    // 2. CORE BLOCKCHAIN CLASSES (No changes needed here)
+    // 2. CORE BLOCKCHAIN CLASSES
     // ====================================================================
     
     class Transaction {
@@ -393,11 +453,9 @@
     }
 
     // ====================================================================
-    // 3. GLOBAL STATE, AUTH, & UI MANAGEMENT (ALL FUNCTIONS EXPOSED TO WINDOW)
+    // 3. UTILITY AND UI FUNCTIONS (EXPOSED TO WINDOW)
     // ====================================================================
 
-    // --- UTILITY FUNCTIONS ---
-    
     /** Rounds a number to two decimal places for currency consistency. */
     window.parseAndRound = (value) => {
         const num = parseFloat(value);
@@ -412,16 +470,17 @@
     /** Updates initial UI with ledger constants. */
     const updateConstantsUI = () => {
         document.getElementById('tx-fee-display').textContent = window.formatCurrency(TX_FEE);
+        document.getElementById('note-fee').textContent = window.formatCurrency(TX_FEE);
         document.getElementById('reward-display').textContent = window.formatCurrency(MINING_REWARD);
         document.getElementById('difficulty-display').textContent = MINING_DIFFICULTY;
     }
     updateConstantsUI(); 
 
     // --- AUTH UI AND LOGIC ---
-    // FIXED: Function assigned to window
     window.signInWithGoogle = () => {
         if (!auth) {
             console.error("Firebase Auth not initialized. Cannot sign in.");
+            document.getElementById('auth-status').textContent = 'Error: Auth not ready.';
             return;
         }
         const provider = new GoogleAuthProvider();
@@ -429,7 +488,6 @@
         signInWithPopup(auth, provider).catch((error) => console.error("Google Sign-In Error:", error));
     };
 
-    // FIXED: Function assigned to window
     window.signOutUser = () => {
         if (!auth) return;
         signOut(auth).catch((error) => console.error("Sign Out Error:", error));
@@ -455,13 +513,16 @@
         }
     };
 
-    // FIXED: Function assigned to window
     window.copyWalletId = () => {
         const walletId = document.getElementById('wallet-id').textContent;
-        window.copyIdToClipboard(walletId);
+        // Don't copy if 'N/A' or 'Anon' short ID is displayed
+        if (walletId === 'N/A' || walletId.includes('... (Anon)')) {
+            window.copyIdToClipboard(currentUserId);
+        } else {
+            window.copyIdToClipboard(walletId);
+        }
     }
 
-    // FIXED: Function assigned to window
     window.toggleRequestMode = () => {
         isRequestMode = !isRequestMode;
         const sendBtn = document.getElementById('send-btn');
@@ -487,10 +548,10 @@
         document.getElementById('amount').value = '1.00';
         document.getElementById('message').value = '';
     }
-
-    // --- AUTH STATE CHANGE LISTENER ---
+    
+    // --- Data Listeners Setup ---
     const setupListeners = () => {
-        if (!db) return;
+        if (!db || !isAuthReady) return;
 
         // Listener for the Blockchain
         onSnapshot(CHAIN_REF, (snapshot) => {
@@ -499,8 +560,8 @@
             
             window.blocksData.sort((a, b) => a.index - b.index);
 
-            displayChain(window.blocksData);
-            checkChainValidity(window.blocksData);
+            window.displayChain(window.blocksData);
+            window.checkChainValidity(window.blocksData);
             if (currentUserId) {
                 window.calculateAndDisplayBalance(window.blocksData);
             }
@@ -518,7 +579,7 @@
 
             if (currentUserId) {
                 const requests = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === currentUserId);
-                displayRequests(requests);
+                window.displayRequests(requests);
             } else {
                 document.getElementById('pending-requests-output').innerHTML = '<p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>';
             }
@@ -528,100 +589,20 @@
         onSnapshot(USER_PROFILE_REF, (snapshot) => {
             userProfiles = [];
             snapshot.forEach(doc => userProfiles.push(doc.data()));
-            displayUserDirectory(userProfiles);
+            window.displayUserDirectory(userProfiles);
         }, (error) => console.error("User Directory Snapshot Error:", error));
     }
 
-
-    if (auth) {
-        onAuthStateChanged(auth, (user) => {
-            const signInBtn = document.getElementById('sign-in-btn');
-            const signOutBtn = document.getElementById('sign-out-btn');
-            const walletIdCode = document.getElementById('wallet-id');
-            const statusSpan = document.getElementById('auth-status');
-            const mineBtn = document.getElementById('mine-btn');
-            isAuthReady = true;
-
-            if (user && user.isAnonymous === false) {
-                currentUserId = user.uid;
-                
-                // 1. Update User Profile for Directory
-                if (db) {
-                    const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
-                    setDoc(userProfileRef, { 
-                        uid: user.uid, 
-                        displayName: user.displayName || 'Wallet User', 
-                        lastSeen: serverTimestamp() 
-                    }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
-                }
-
-                // 2. UI Update
-                walletIdCode.textContent = currentUserId;
-                statusSpan.innerHTML = `Signed In: ${user.displayName || 'User'}`;
-                statusSpan.style.color = 'var(--color-primary-accent)';
-                signInBtn.style.display = 'none';
-                signOutBtn.style.display = 'inline-block';
-                mineBtn.disabled = false;
-                
-                window.calculateAndDisplayBalance(window.blocksData); 
-
-            } else if (user) { // Includes anonymous sign-in
-                currentUserId = user.uid; 
-                walletIdCode.textContent = user.isAnonymous ? currentUserId.substring(0, 15) + '... (Anon)' : currentUserId;
-                statusSpan.innerHTML = user.isAnonymous ? 'Anonymous' : 'Signed In';
-                statusSpan.style.color = user.isAnonymous ? 'var(--color-secondary-accent)' : 'var(--color-primary-accent)';
-                signInBtn.style.display = user.isAnonymous ? 'inline-block' : 'none';
-                signOutBtn.style.display = 'inline-block';
-                mineBtn.disabled = false;
-                window.calculateAndDisplayBalance(window.blocksData);
-                
-            } else {
-                // Fully Signed out
-                currentUserId = null;
-                walletIdCode.textContent = 'N/A';
-                statusSpan.innerHTML = 'Signed Out';
-                statusSpan.style.color = 'var(--color-danger)';
-                document.getElementById('current-balance').textContent = '0.00';
-                document.querySelector('.balance-label').textContent = 'Current Balance'; // Reset label
-                signInBtn.style.display = 'inline-block';
-                signOutBtn.style.display = 'none';
-                mineBtn.disabled = true;
-            }
-            
-            // Start listeners only once auth is ready and db is connected
-            if (db && isAuthReady) {
-                setupListeners();
-            }
-        });
-    }
-
-    // Initial Authentication attempt
-    const attemptAuth = async () => {
-        if (!auth) return;
-        try {
-            if (initialAuthToken) {
-                await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (e) {
-            console.error("Initial Authentication failed:", e);
-        }
-    };
-    attemptAuth();
-    
     // ====================================================================
     // 4. TRANSACTION & MINING LOGIC (FUNCTIONS EXPOSED TO WINDOW)
     // ====================================================================
 
     // --- Client-side Validation ---
     const validateTransactionInput = (toAddress, amount, isSending = true) => {
-        // Implementation remains the same
         const parsedAmount = window.parseAndRound(amount);
         const txStatus = document.getElementById('tx-status');
         const currentBalance = window.parseAndRound(document.getElementById('current-balance').dataset.calculatedBalance || 0);
         const isAdmin = currentUserId === MASTER_ADMIN_UID;
-
 
         if (!currentUserId) { txStatus.textContent = "Error: Please sign in to perform this action."; return false; }
         if (!toAddress) { txStatus.textContent = "Error: Recipient ID is required."; return false; }
@@ -642,7 +623,6 @@
     };
 
     // --- STANDARD TRANSACTION (Send/Burn) ---
-    // FIXED: Function assigned to window
     window.sendTransaction = async () => {
         if (!db) { document.getElementById('tx-status').textContent = "Error: Database connection failed."; return; }
         
@@ -657,7 +637,6 @@
         const totalCost = parsedAmount + TX_FEE;
         const txMessage = toAddress === BURN_ADDRESS ? `🔥 BURN: ${message}` : message;
         
-        // Create the transaction object
         const newTx = new Transaction(currentUserId, toAddress, parsedAmount, txMessage, false, TX_FEE);
         
         try {
@@ -674,7 +653,6 @@
     };
 
     // --- INVOICE REQUEST ---
-    // FIXED: Function assigned to window
     window.requestFunds = async () => {
         if (!db) { document.getElementById('tx-status').textContent = "Error: Database connection failed."; return; }
         
@@ -686,7 +664,6 @@
         if (!validateTransactionInput(debtorId, amount, false)) return;
 
         const parsedAmount = window.parseAndRound(amount);
-        // Note: fromAddress and toAddress are swapped for a request (From: Debtor, To: Creditor)
         const requestTx = new Transaction(debtorId, currentUserId, parsedAmount, `INVOICE: ${message}`, true, 0);
         
         try {
@@ -703,9 +680,11 @@
     };
 
     // --- MINING ---
-    // FIXED: Function assigned to window
     window.mineBlock = async () => {
-        if (!currentUserId || !db) { document.getElementById('mining-status').textContent = "Error: Not signed in or database unavailable."; return; }
+        if (!currentUserId || !db || !PENDING_TX_REF || !CHAIN_REF) { 
+            document.getElementById('mining-status').textContent = "Error: Not signed in or database unavailable."; 
+            return; 
+        }
 
         const mineBtn = document.getElementById('mine-btn');
         const miningStatus = document.getElementById('mining-status');
@@ -802,7 +781,6 @@
             balanceDisplay.style.color = 'var(--color-info)'; 
             balanceLabel.textContent = 'Current Balance (ADMIN MODE)';
             
-            // Store the high numerical value for the admin's balance check bypass
             balanceDisplay.dataset.calculatedBalance = UNLIMITED_BALANCE;
             return; 
         }
@@ -828,13 +806,11 @@
             }
         }
         balanceDisplay.textContent = window.formatCurrency(balance);
-        // Store the actual balance for standard user's balance check
         balanceDisplay.dataset.calculatedBalance = balance;
     }
 
     // --- Directory Display ---
-    function displayUserDirectory(users) {
-        // Implementation remains the same
+    window.displayUserDirectory = (users) => {
         const output = document.getElementById('user-directory-output');
         document.getElementById('directory-count').textContent = users.length;
         if (!output) return;
@@ -867,8 +843,7 @@
     }
 
     // --- Incoming Request/Invoice Display ---
-    function displayRequests(requests) {
-        // Implementation remains the same
+    window.displayRequests = (requests) => {
         const output = document.getElementById('pending-requests-output');
         if (!output) return; 
         
@@ -894,8 +869,7 @@
     }
 
     // --- Block Explorer Display ---
-    function displayChain(blocks) {
-        // Implementation remains the same
+    window.displayChain = (blocks) => {
         const output = document.getElementById('chain-output');
         output.innerHTML = '';
         document.getElementById('chain-length').textContent = blocks.length;
@@ -955,8 +929,7 @@
     }
 
     // --- Chain Validation ---
-    function checkChainValidity(chain) {
-        // Implementation remains the same
+    window.checkChainValidity = (chain) => {
         let isValid = true;
         const target = Array(MINING_DIFFICULTY + 1).join("0");
         
@@ -982,6 +955,9 @@
         document.getElementById('chain-valid').textContent = isValid ? 'VALID' : 'INVALID (Chain Tampered)';
         document.getElementById('chain-valid').style.color = isValid ? 'var(--color-success)' : 'var(--color-danger)';
     }
+    
+    // --- Start Application ---
+    initializeFirebase();
 
 </script>
 </body>
