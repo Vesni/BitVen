@@ -3,292 +3,281 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen Secure Ledger</title>
+    <title>The BitVen Wallet (BVN) - Clean Ledger</title>
     <!-- Include crypto-js for SHA256 Hashing (Used in Proof-of-Work) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
     <style>
-        /* New Color Palette: Cyber Gold / Neon Tech */
+        /* ================================================= */
+        /* CSS Reset and Bright Theme Variables (No glow) */
+        /* ================================================= */
         :root {
-            --color-primary-accent: #FFA500; /* Neon Orange/Gold for main buttons/titles */
-            --color-secondary-accent: #FFD700; /* Cyber Gold for IDs/Text */
-            --color-background-dark: #0D1B2A; /* Deep Dark Blue Body */
-            --color-background-mid: #1B263B; /* Container Background */
-            --color-card: #2A3A50; /* Block/Card Background */
-            --color-success: #58D68D; /* Bright Green */
-            --color-danger: #E74C3C; /* Red */
+            --color-primary-accent: #2563EB; /* Blue 600 */
+            --color-secondary-accent: #CA8A04; /* Yellow 700 */
+            --color-background-light: #F9FAFB; /* Very Light Background */
+            --color-card-light: #FFFFFF; /* White Card Background */
+            --color-text-dark: #1F2937; /* Dark Gray Text */
+            --color-text-subtle: #6B7280; /* Subtle Gray Text */
+            --color-border: #E5E7EB; /* Light Gray Border */
+            --color-success: #10B981; /* Green Success */
+            --color-danger: #EF4444; /* Red Danger */
+            --color-info: #6366F1; /* Indigo Info - Used for Admin highlight */
+            
+            /* Game/Ledger Constants */
+            --tx-fee: 0.01; 
+            --mining-difficulty: 5;
+            --mining-reward: 0; 
         }
 
-        /* Base Styling */
-        body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--color-background-dark); color: #e4e4e4; line-height: 1.6; }
-        .container { max-width: 1100px; margin: 20px auto; padding: 30px; border-radius: 12px; background: var(--color-background-mid); box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6); }
-        h1 { color: var(--color-secondary-accent); text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); }
-        h2 { color: var(--color-primary-accent); border-bottom: 2px solid #3c546b; padding-bottom: 10px; margin-top: 0; font-size: 1.5em; }
-        
-        /* Section Layout */
-        .section { margin-bottom: 30px; padding: 25px; border-radius: 8px; background: var(--color-card); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); }
-        #transaction-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .request-section { border-left: 4px solid var(--color-primary-accent); }
-        
-        /* Inputs & Buttons */
-        input { 
-            padding: 12px; margin-right: 10px; margin-bottom: 15px; border: 1px solid #6c757d; border-radius: 6px; 
-            background: var(--color-background-mid); color: #fff; box-sizing: border-box; transition: border-color 0.2s;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            background-color: var(--color-background-light); 
+            color: var(--color-text-dark); 
+            line-height: 1.6; 
         }
-        input:focus { border-color: var(--color-primary-accent); outline: none; }
+        .container { 
+            max-width: 1200px; 
+            margin: 30px auto; 
+            padding: 30px; 
+            border-radius: 16px; 
+            background: var(--color-card-light); 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); 
+            border: 1px solid var(--color-border);
+        }
+        h1 { 
+            color: var(--color-primary-accent); 
+            text-align: center; 
+            margin-bottom: 40px; 
+            font-size: 2.5em; 
+            font-weight: 800;
+        }
+        h2 { 
+            color: var(--color-info); 
+            border-bottom: 2px solid var(--color-border); 
+            padding-bottom: 12px; 
+            margin-top: 0; 
+            font-size: 1.6em; 
+            font-weight: 700;
+        }
+        
+        /* Layout Grid */
+        #main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 40px; margin-top: 20px; }
+        .section { 
+            padding: 20px; 
+            border-radius: 12px; 
+            background: var(--color-card-light); 
+            border: 1px solid var(--color-border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); 
+            margin-bottom: 25px; 
+        }
+
+        /* Inputs & Buttons */
+        input, select { 
+            padding: 12px; 
+            margin-right: 10px; 
+            margin-bottom: 15px; 
+            border: 1px solid #D1D5DB; 
+            border-radius: 8px; 
+            background: #F9FAFB; 
+            color: var(--color-text-dark); 
+            box-sizing: border-box; 
+            transition: all 0.2s;
+        }
+        input:focus { border-color: var(--color-primary-accent); outline: none; background: var(--color-card-light); }
         .input-full { width: calc(100% - 10px); }
         .input-half { width: calc(50% - 10px); }
 
         button { 
-            background-color: var(--color-primary-accent); color: var(--color-background-dark); padding: 12px 20px; border: none; border-radius: 6px; 
-            cursor: pointer; margin-right: 10px; transition: all 0.2s ease; font-weight: bold;
-            box-shadow: 0 4px #CC8400; margin-bottom: 5px;
+            background-color: var(--color-primary-accent); 
+            color: var(--color-card-light); 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin-right: 10px; 
+            transition: all 0.2s ease; 
+            font-weight: 600;
+            box-shadow: 0 4px 0 #1D4ED8; /* Darker blue for shadow */
         }
-        button:hover:not(:disabled) { background-color: #CC8400; box-shadow: 0 2px #CC8400; transform: translateY(2px); }
-        button:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; transform: none; }
+        button:hover:not(:disabled) { 
+            background-color: #1D4ED8; /* Slightly darker primary on hover */
+            box-shadow: 0 2px 0 #1D4ED8; 
+            transform: translateY(2px); 
+        }
+        button:disabled { 
+            background-color: #D1D5DB; 
+            color: #9CA3AF;
+            cursor: not-allowed; 
+            box-shadow: none; 
+            transform: none; 
+        }
         
-        /* Specific Buttons */
-        #mine-btn { background-color: var(--color-success); box-shadow: 0 4px #47B974; color: var(--color-background-dark); }
-        #mine-btn:hover:not(:disabled) { background-color: #47B974; box-shadow: 0 2px #47B974; }
-        .request-btn { background-color: var(--color-secondary-accent); color: var(--color-background-dark); box-shadow: 0 4px #CC9C00; }
-        .request-btn:hover:not(:disabled) { background-color: #CC9C00; box-shadow: 0 2px #CC9C00; }
-        .bank-btn { background-color: #7B68EE; box-shadow: 0 4px #5A4EBC; } 
-        .bank-btn:hover:not(:disabled) { background-color: #5A4EBC; box-shadow: 0 2px #5A4EBC; }
+        /* Specific Button Styles */
+        #mine-btn { background-color: var(--color-success); box-shadow: 0 4px 0 #059669; }
+        #mine-btn:hover:not(:disabled) { background-color: #059669; box-shadow: 0 2px 0 #059669; }
 
-        /* Auth & Balance Display */
-        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: normal; margin-left: 10px; font-size: 0.9em; }
-        .admin-tag { background: #7B68EE; color: white; }
-        .user-tag { background: var(--color-primary-accent); color: var(--color-background-dark); }
+        /* Wallet Info */
+        .wallet-info-bar { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--color-border); margin-bottom: 15px; }
+        .balance-display { font-size: 3em; font-weight: 900; color: var(--color-success); }
+        .balance-label { color: var(--color-text-subtle); font-size: 0.8em; margin-bottom: 5px; }
+        #wallet-id-container { font-size: 0.9em; word-break: break-all; margin-top: 15px; color: var(--color-text-dark); }
+        code { background: #F3F4F6; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; border: 1px solid #E5E7EB; }
         
-        .balance-info { font-size: 1.6em; font-weight: bold; color: #e4e4e4; padding: 10px 0; border-top: 1px dashed #3c546b; margin-top: 15px; }
-        .balance-info span { color: var(--color-success); }
-        #wallet-id { color: var(--color-secondary-accent); font-size: 1.0em; word-break: break-all; }
-        
-        /* Copy Button */
-        .copy-btn {
-            background: none;
-            border: none;
-            padding: 5px 10px;
-            margin-left: 5px;
-            color: var(--color-secondary-accent);
-            font-size: 1.2em;
-            cursor: pointer;
-            box-shadow: none !important;
-            transform: none !important;
-            vertical-align: middle;
-        }
-        .copy-btn:hover { color: var(--color-primary-accent); }
-        .copy-status-inline {
-            display: inline-block;
-            font-size: 0.8em;
-            color: var(--color-success);
-            margin-left: 10px;
-        }
-
-        /* Directory Styling */
-        #user-directory-output { max-height: 250px; overflow-y: auto; background: var(--color-background-mid); padding: 10px; border-radius: 8px; }
-        .directory-item {
-            display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #3c546b;
-        }
+        /* Directory/List Styling */
+        #user-directory-output, #chain-output { max-height: 450px; overflow-y: auto; background: #F9FAFB; padding: 15px; border-radius: 8px; border: 1px solid var(--color-border); }
+        .directory-item, .request-card, .block-card { padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+        .directory-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--color-border); }
         .directory-item:last-child { border-bottom: none; }
-        .user-name { font-weight: bold; color: var(--color-secondary-accent); margin-right: 10px; }
-        .directory-copy-btn {
-            padding: 5px 10px; font-size: 0.8em; background-color: #4a6fa5; box-shadow: none; color: white;
-        }
-        .directory-copy-btn:hover { background-color: #3b5a80; }
-        .user-details code {
-            background: var(--color-card); padding: 2px 4px; border-radius: 3px; font-size: 0.8em; word-break: break-all;
-        }
 
-        /* Blockchain Display */
-        #chain-output { max-height: 450px; overflow-y: scroll; background: var(--color-background-mid); padding: 10px; border-radius: 8px; }
-        .block-card { 
-            background: var(--color-card); border: 1px solid #3c546b; margin-bottom: 15px; padding: 15px; border-radius: 8px; 
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); transition: transform 0.2s;
-        }
-        .block-card:hover { transform: translateY(-3px); box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5); }
-        .block-card strong { color: var(--color-secondary-accent); }
-        .block-card code { background: var(--color-background-mid); padding: 2px 4px; border-radius: 3px; font-size: 0.8em; word-break: break-all; }
+        /* Block Explorer */
+        .block-card { background: var(--color-card-light); border: 1px solid #D1D5DB; }
+        .block-header { display: flex; justify-content: space-between; font-size: 1.1em; font-weight: bold; margin-bottom: 8px; color: var(--color-info); }
+        .fee-info { color: var(--color-secondary-accent); font-weight: normal; font-size: 0.8em; }
+        .tx-list li { margin-bottom: 5px; font-size: 0.9em; border-left: 2px solid #D1D5DB; padding-left: 10px; color: var(--color-text-subtle);}
+        .reward-tx { color: var(--color-success); font-weight: 600; }
         
-        .block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .difficulty-tag { background: #7B68EE; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
-        .block-details { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.9em; margin-bottom: 10px; }
-        
-        details summary { cursor: pointer; color: var(--color-primary-accent); font-weight: bold; }
-        .tx-list { list-style: none; padding-left: 0; margin-top: 10px; border-top: 1px solid #3c546b; padding-top: 10px; }
-        .tx-list li { margin-bottom: 8px; padding: 5px; border-left: 3px solid #6c757d; }
-        .reward-tx { border-left: 3px solid var(--color-success) !important; }
-        .tx-amount { font-weight: bold; color: var(--color-secondary-accent); }
-
-        .valid-block { border-left: 5px solid var(--color-success); }
-        .invalid-block { border-left: 5px solid var(--color-danger); }
-
-        /* Request Cards (Invoices Sent To You) */
-        #pending-requests-output { margin-top: 15px; }
-        .request-card { background: var(--color-card); padding: 15px; border-radius: 8px; border-left: 5px solid var(--color-primary-accent); margin-bottom: 10px; }
-        .request-amount { font-size: 1.2em; font-weight: bold; color: var(--color-primary-accent); }
-        .request-msg { font-size: 0.9em; color: #ccc; margin: 5px 0 10px 0; }
-        .pay-request-btn { padding: 8px 15px; font-size: 0.9em; background-color: var(--color-success); box-shadow: none; color: var(--color-background-dark); }
-        .pay-request-btn:hover { background-color: #47B974; transform: none; box-shadow: none; }
-        .no-requests { color: #aaa; font-style: italic; }
-
-        /* Personal History Styling */
-        .history-list {
-            display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding: 5px;
-        }
-        .history-item {
-            display: flex; align-items: center; background: var(--color-background-mid);
-            padding: 15px; border-radius: 6px; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-        .history-item:hover { background: #2A3A50; }
-        .history-amount {
-            font-size: 1.4em; font-weight: bold; min-width: 120px; text-align: right; padding-right: 20px; border-right: 2px solid #3c546b;
-        }
-        .amount-in { color: var(--color-success); }
-        .amount-out { color: var(--color-danger); }
-
-        .history-details { padding-left: 20px; flex-grow: 1; font-size: 0.9em; }
-        .history-status { font-weight: bold; margin-bottom: 3px; font-size: 1.0em; }
-        .history-time { color: #a9a9a9; font-size: 0.8em; margin-top: 5px; }
-        
-        .status-success { border-left: 5px solid var(--color-success); }
-        .status-danger { border-left: 5px solid var(--color-danger); }
-        .status-request-in { border-left: 5px solid var(--color-primary-accent); } 
-        .status-request-out { border-left: 5px solid var(--color-secondary-accent); } 
-        .status-pending-in { border-left: 5px solid #00BFFF; } 
-        .status-pending-out { border-left: 5px solid #FF4500; } 
-        
-        /* Mobile adjustments */
-        @media (max-width: 768px) {
+        /* Responsive */
+        @media (max-width: 900px) {
+            #main-grid { grid-template-columns: 1fr; gap: 30px; }
             .container { margin: 10px; padding: 15px; }
-            #transaction-container { grid-template-columns: 1fr; }
-            .input-full, .input-half { width: 100%; margin-right: 0; }
-            button { width: 100%; margin-right: 0; margin-bottom: 10px; }
-            .block-details { grid-template-columns: 1fr; }
-            .history-item { flex-direction: column; align-items: flex-start; }
-            .history-amount { min-width: auto; text-align: left; border-right: none; padding-right: 0; margin-bottom: 10px; }
-            .history-details { padding-left: 0; }
+            .input-full, .input-half, button { width: 100%; margin-right: 0; margin-bottom: 15px; }
+            .balance-display { font-size: 2.5em; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>⛓️ BitVen - Secure Ledger</h1>
-    <p style="color: var(--color-secondary-accent); text-align: center;">
-        **Mining Difficulty:** <span id="difficulty-display">5</span> leading zeros required (Proof-of-Work enforced). 
-        <br>Mining Reward: <span id="reward-display">5</span> BVN.
-    </p>
+    <h1>⛓️ BitVen Blockchain Ledger (v3)</h1>
     
-    <!-- AUTH SECTION -->
-    <div class="section">
-        <h2>👤 Wallet & Authentication</h2>
-        <p><strong>Status:</strong> <span id="auth-status">Waiting for authentication...</span></p>
-        <p>
-            <strong>Your Wallet ID (UID):</strong> 
-            <code id="wallet-id">N/A</code>
-            <button class="copy-btn" onclick="window.copyWalletId()" title="Copy ID to Clipboard">📋</button>
-        </p>
-        <p id="copy-status" style="font-size: 0.9em; margin-top: 5px; color: var(--color-success);"></p>
-        <p class="balance-info">
-            <strong>Current Balance:</strong> <span id="current-balance">0.00</span> BVN
-        </p>
-        <button id="sign-in-btn" onclick="window.signInWithGoogle()" style="display: none;">Sign In / Change Account</button>
-        <button id="sign-out-btn" onclick="window.signOutUser()" style="display: none;">Sign Out</button>
-        <button onclick="window.calculateAndDisplayBalance()">Refresh Balance</button>
-    </div>
-
-    <!-- USER DIRECTORY SECTION -->
-    <div class="section">
-        <h2>👥 User Directory</h2>
-        <p style="font-size: 0.9em; color: var(--color-primary-accent);">Find other user's Wallet IDs to send payments.</p>
-        <div id="user-directory-output">
-            <p class="no-requests">Loading user directory...</p>
-        </div>
-    </div>
-
-
-    <!-- TRANSACTION/ADMIN SECTION -->
-    <div id="transaction-container">
-        <div class="section">
-            <p>Please sign in to view transactions or mine.</p>
-        </div>
-    </div>
-    
-    <!-- PENDING REQUESTS SECTION -->
-    <div class="section">
-        <h2>📥 Invoices Sent To You</h2>
-        <div id="pending-requests-output">
-            <p class="no-requests">Sign in to see pending invoices.</p>
-        </div>
-    </div>
-
-
-    <!-- MINING SECTION -->
-    <div class="section">
-        <h2>⛏️ Mining Pool (PoW)</h2>
-        <p>Pending Transactions (Ready to Mine): <span id="pending-tx-count">0</span></p>
-        <button id="mine-btn" onclick="window.mineBlock()" disabled>Mine New Block</button>
-        <p style="font-size: 0.9em; margin-top: 10px; color: var(--color-secondary-accent);">
-            **Warning:** Mining is CPU-intensive. Difficulty increased to <span id="mining-difficulty-warning">5</span>.
+    <!-- ADMIN INSTRUCTION BAR -->
+    <div style="padding: 10px; margin-bottom: 20px; border-radius: 8px; background: #FEF3C7; border: 1px solid #FCD34D;">
+        <p style="color: #92400E; font-size: 0.9em; margin: 0; font-weight: 600;">
+            🔑 **Admin Setup:** To enable **Unlimited BitVen**, please edit the **`MASTER_ADMIN_UID`** variable in the code below 
+            and replace the placeholder with your actual Firebase UID (visible after Google Sign-In).
         </p>
     </div>
 
-    <!-- PERSONAL HISTORY SECTION -->
+    <!-- WALLET INFO & AUTH SECTION -->
     <div class="section">
-        <h2>📜 My Transaction History</h2>
-        <p style="font-size: 0.9em; color: var(--color-primary-accent);">Includes all Mined, Pending, Sent, and Received activity, sorted by time.</p>
-        <div id="personal-history-output" class="history-list">
-            <p class="no-requests">Sign in to see your history.</p>
+        <div class="wallet-info-bar">
+            <div>
+                <div class="balance-label">Current Balance</div>
+                <div class="balance-display"><span id="current-balance">0.00</span> BVN</div>
+            </div>
+            <div>
+                <button id="sign-in-btn" onclick="window.signInWithGoogle()">Sign In/Wallet Login</button>
+                <button id="sign-out-btn" onclick="window.signOutUser()" style="display: none;">Sign Out</button>
+                <button onclick="window.calculateAndDisplayBalance(blocksData)" style="margin-left: 10px;">Refresh Balance</button>
+            </div>
+        </div>
+        <div id="wallet-id-container">
+            <strong>Active Wallet ID:</strong> <code id="wallet-id">N/A</code>
+            <button class="copy-btn" onclick="window.copyWalletId()" title="Copy ID" style="padding: 6px 10px; margin-left: 10px; font-size: 0.8em;">📋</button>
+            <span id="auth-status" style="margin-left: 20px; font-weight: 600; color: var(--color-danger);">Signed Out</span>
+            <span id="copy-status" style="font-size: 0.8em; margin-left: 10px; color: var(--color-success);"></span>
         </div>
     </div>
 
-    <!-- CHAIN DISPLAY SECTION -->
-    <div class="section">
-        <h2>🔗 Blockchain (Blocks)</h2>
-        <p>Total Blocks: <span id="chain-length">0</span> | Chain Valid: <span id="chain-valid">Checking...</span></p>
-        <div id="chain-output">
-            <!-- Blocks will be injected here -->
+    <div id="main-grid">
+        <!-- LEFT COLUMN: Transactions, Mining -->
+        <div>
+            <!-- MINING SECTION (Proof-of-Work) -->
+            <div class="section">
+                <h2>⛏️ Proof-of-Work & Fees</h2>
+                <p style="font-size: 0.9em; color: var(--color-text-dark); border-bottom: 1px dashed var(--color-border); padding-bottom: 10px;">
+                    **Tx Fee:** <span id="tx-fee-display">0.01</span> BVN | 
+                    **Base Reward:** <span id="reward-display" style="color: var(--color-danger); font-weight: bold;">0.00</span> BVN (Miners earn transaction fees only). | 
+                    **Difficulty (Leading Zeros):** <span id="difficulty-display">5</span>.
+                </p>
+                
+                <p style="color: var(--color-text-subtle);">
+                    Pending Transactions: <span id="pending-tx-count">0</span> | Total Fees in Pool: <strong id="fees-pool">0.00</strong> BVN
+                </p>
+                <button id="mine-btn" onclick="window.mineBlock()" disabled>
+                    Mine Block (Start Calculation)
+                </button>
+                <p id="mining-status" style="font-size: 0.9em; color: var(--color-primary-accent); margin-top: 10px; font-weight: 600;"></p>
+            </div>
+
+            <!-- TRANSACTION & INVOICE SECTION -->
+            <div class="section">
+                <h2 id="tx-section-title">💸 Send BitVen</h2>
+                <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID) or Burn Address" class="input-full">
+                <input type="number" id="amount" placeholder="Amount (BVN)" value="1.00" min="0.01" step="any" class="input-half">
+                <input type="text" id="message" placeholder="Optional Memo/Reason" class="input-half">
+                <button id="send-btn" onclick="window.sendTransaction()">Submit Transaction</button>
+                <button id="request-btn" onclick="window.toggleRequestMode()" style="background-color: var(--color-info); box-shadow: 0 4px 0 #4F46E5;">
+                    Switch to Invoice Request
+                </button>
+                <p style="font-size: 0.8em; color: var(--color-text-subtle); margin-top: 5px;">
+                    <strong style="color: var(--color-danger);">NOTE:</strong> All transactions require a ${TX_FEE} BVN fee. The **Burn Address** is permanent.
+                </p>
+                <p id="tx-status" style="color: var(--color-primary-accent); margin-top: 10px; font-weight: 600;"></p>
+            </div>
+            
+            <!-- INCOMING INVOICES -->
+            <div class="section">
+                <h2>📥 Incoming Invoices (Pay Now)</h2>
+                <div id="pending-requests-output">
+                    <p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>
+                </div>
+            </div>
+
         </div>
-        <p style="font-size: 0.8em; color: #a9a9a9;">
-            Note: All transaction and block data is stored in public Firestore collections.
-        </p>
+
+        <!-- RIGHT COLUMN: Directory & Block Explorer -->
+        <div>
+            <!-- USER DIRECTORY -->
+            <div class="section">
+                <h2>👥 User Directory</h2>
+                <p style="font-size: 0.9em; color: var(--color-text-subtle);">Publicly visible wallets (Total: <span id="directory-count">0</span>)</p>
+                <div id="user-directory-output">
+                    <p style="color: var(--color-text-subtle);">Loading user directory...</p>
+                </div>
+            </div>
+
+            <!-- BLOCK EXPLORER -->
+            <div class="section">
+                <h2>🔍 Block Explorer</h2>
+                <p style="color: var(--color-text-subtle);">
+                    Total Blocks: <span id="chain-length">0</span> | Chain Status: <span id="chain-valid" style="font-weight: bold;">Checking...</span>
+                </p>
+                <div id="chain-output">
+                    <!-- Blocks will be injected here -->
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script type="module">
-    // 1. FIREBASE CONFIG AND INITIALIZATION
+    // ====================================================================
+    // 1. CONFIGURATION & FIREBASE SETUP
+    // ====================================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { 
-        getAuth, 
-        GoogleAuthProvider, 
-        signInWithPopup, 
-        onAuthStateChanged,
-        signOut,
-        signInWithCustomToken,
-        signInAnonymously
+        getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut,
+        signInWithCustomToken, signInAnonymously
     } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
     import { 
-        getFirestore, 
-        collection, 
-        getDocs, 
-        addDoc, 
-        query, 
-        orderBy, 
-        limit,
-        onSnapshot,
-        writeBatch,
-        doc,
-        setDoc,
-        serverTimestamp,
-        setLogLevel
+        getFirestore, collection, getDocs, addDoc, query, orderBy, limit,
+        onSnapshot, writeBatch, doc, setDoc, serverTimestamp, setLogLevel
     } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
     setLogLevel('Debug');
     
-    // Global Configuration
-    const ADMIN_EMAIL = 'lanushomeappliances@gmail.com'; 
+    // --- LEDGER CONSTANTS & ADMIN CONFIGURATION ---
+    const BURN_ADDRESS = 'BVN_BURN_ADDRESS_0x0000000000000000000000000000000000000000';
     const MINING_DIFFICULTY = 5; 
-    const MINING_REWARD = 5;   
+    const MINING_REWARD = 0.00; // Base reward is ZERO.
+    const TX_FEE = 0.01;
+
+    // !!! ADMINISTRATOR CONFIGURATION !!!
+    // The admin user MUST replace the placeholder below with their actual Firebase Google Sign-In UID.
+    const MASTER_ADMIN_UID = 'REPLACE_THIS_WITH_YOUR_ACTUAL_ADMIN_UID'; 
+    const UNLIMITED_BALANCE = 999999999.00; // The unlimited balance amount
 
     // Environment-provided globals
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -320,29 +309,29 @@
     attemptAuth();
 
     // Firestore Collection References (Public data for shared blockchain and directory)
-    const CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain`);
-    const PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions`);
-    const USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles`);
+    const CHAIN_REF = collection(db, `/artifacts/${appId}/public/data/blockchain_chain_v2`);
+    const PENDING_TX_REF = collection(db, `/artifacts/${appId}/public/data/pending_transactions_v2`);
+    const USER_PROFILE_REF = collection(db, `/artifacts/${appId}/public/data/user_profiles_v2`);
 
     // ====================================================================
-    // CORE BLOCKCHAIN CLASSES
+    // 2. CORE BLOCKCHAIN CLASSES
     // ====================================================================
     
     class Transaction {
-        // NOTE: timestamp is set to serverTimestamp() only when writing to Firestore
-        constructor(fromAddress, toAddress, amount, message = '', isRequest = false) {
+        constructor(fromAddress, toAddress, amount, message = '', isRequest = false, fee = 0) {
             this.fromAddress = fromAddress;
             this.toAddress = toAddress;
-            this.amount = parseFloat(amount);
+            this.amount = window.parseAndRound(amount);
             this.message = message;
             this.isRequest = isRequest; 
+            this.fee = window.parseAndRound(fee);
         }
     }
 
     class Block {
         constructor(index, transactions, previousHash = '') {
             this.index = index;
-            this.timestamp = Date.now(); // Client-side timestamp for hashing
+            this.timestamp = Date.now(); // Client-side timestamp for hashing consistency
             this.transactions = transactions;
             this.previousHash = previousHash;
             this.nonce = 0; 
@@ -350,12 +339,20 @@
         }
 
         calculateHash() {
+            // Hash calculation must be deterministic
             return CryptoJS.SHA256(
                 this.index + 
                 this.previousHash + 
                 this.timestamp + 
                 this.nonce + 
-                JSON.stringify(this.transactions)
+                JSON.stringify(this.transactions.map(tx => ({
+                    // Create a lite-version of TX data for hashing
+                    from: tx.fromAddress, 
+                    to: tx.toAddress, 
+                    amt: tx.amount, 
+                    msg: tx.message, 
+                    fee: tx.fee,
+                }))) 
             ).toString();
         }
 
@@ -365,49 +362,68 @@
                 this.nonce++;
                 this.hash = this.calculateHash();
             }
-            console.log("BLOCK MINED:", this.hash);
         }
     }
 
     // ====================================================================
-    // GLOBAL STATE & AUTHENTICATION
+    // 3. GLOBAL STATE, AUTH, & UI MANAGEMENT
     // ====================================================================
     
     let currentUserId = null;
-    let isAdmin = false;
+    let isAuthReady = false;
+    let isRequestMode = false;
     let blocksData = [];
-    let pendingSnapshotData = null;
+    let userProfiles = [];
 
+    // --- UTILITY FUNCTIONS ---
+
+    /** Rounds a number to two decimal places for currency consistency. */
+    window.parseAndRound = (value) => {
+        const num = parseFloat(value);
+        return isNaN(num) ? 0 : Math.round(num * 100) / 100;
+    };
+
+    /** Formats a number to two decimal places string. */
+    window.formatCurrency = (value) => {
+        return window.parseAndRound(value).toFixed(2);
+    };
+
+    /** Updates initial UI with ledger constants. */
+    const updateConstantsUI = () => {
+        document.getElementById('tx-fee-display').textContent = window.formatCurrency(TX_FEE);
+        document.getElementById('reward-display').textContent = window.formatCurrency(MINING_REWARD);
+        document.getElementById('difficulty-display').textContent = MINING_DIFFICULTY;
+    }
+    updateConstantsUI(); // Call on load
+
+    // --- AUTH UI AND LOGIC ---
     window.signInWithGoogle = () => {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' }); 
-        signInWithPopup(auth, provider)
-          .catch((error) => console.error("Google Sign-In Error:", error));
+        signInWithPopup(auth, provider).catch((error) => console.error("Google Sign-In Error:", error));
     };
 
     window.signOutUser = () => {
         signOut(auth).catch((error) => console.error("Sign Out Error:", error));
     };
-
+    
     window.copyIdToClipboard = (idToCopy, statusElementId = 'copy-status') => {
         const statusEl = document.getElementById(statusElementId);
-        
         if (idToCopy) {
             try {
-                // Fallback for clipboard access within iframe constraints
+                // Use the document.execCommand('copy') method for reliable copy in iframes
                 const el = document.createElement('textarea');
                 el.value = idToCopy;
-                el.style.position = 'fixed'; // Avoid scrolling to bottom
-                document.body.appendChild(el);
+                el.style.position = 'fixed'; document.body.appendChild(el);
                 el.select();
                 document.execCommand('copy');
                 document.body.removeChild(el);
                 
-                statusEl.textContent = '✅ ID copied!';
+                statusEl.textContent = '✅ Copied!';
                 setTimeout(() => { statusEl.textContent = ''; }, 3000);
             } catch (err) {
                 console.error('Could not copy text: ', err);
-                statusEl.textContent = '❌ Failed to copy ID.';
+                statusEl.textContent = '❌ Failed to copy.';
             }
         }
     };
@@ -417,131 +433,127 @@
         window.copyIdToClipboard(walletId);
     }
 
+    window.toggleRequestMode = () => {
+        isRequestMode = !isRequestMode;
+        const sendBtn = document.getElementById('send-btn');
+        const requestBtn = document.getElementById('request-btn');
+        const txTitle = document.getElementById('tx-section-title');
+        const recipientInput = document.getElementById('recipient-id');
 
+        if (isRequestMode) {
+            txTitle.textContent = '📝 Create Invoice Request';
+            sendBtn.textContent = 'Send Invoice';
+            sendBtn.onclick = window.requestFunds;
+            requestBtn.textContent = 'Switch to Send BitVen';
+            recipientInput.placeholder = 'Debtor Wallet ID (UID)';
+        } else {
+            txTitle.textContent = '💸 Send BitVen';
+            sendBtn.textContent = 'Submit Transaction';
+            sendBtn.onclick = window.sendTransaction;
+            requestBtn.textContent = 'Switch to Invoice Request';
+            recipientInput.placeholder = 'Recipient Wallet ID (UID) or Burn Address';
+        }
+        document.getElementById('tx-status').textContent = '';
+        document.getElementById('recipient-id').value = '';
+        document.getElementById('amount').value = '1.00';
+        document.getElementById('message').value = '';
+    }
+
+    // --- AUTH STATE CHANGE LISTENER ---
     onAuthStateChanged(auth, (user) => {
         const signInBtn = document.getElementById('sign-in-btn');
         const signOutBtn = document.getElementById('sign-out-btn');
         const walletIdCode = document.getElementById('wallet-id');
         const statusSpan = document.getElementById('auth-status');
-        const txContainer = document.getElementById('transaction-container');
-        
+        const mineBtn = document.getElementById('mine-btn');
+        isAuthReady = true;
+
         if (user && user.isAnonymous === false) {
             currentUserId = user.uid;
-            isAdmin = user.email === ADMIN_EMAIL;
             
-            // Update User Profile for Directory
+            // 1. Update User Profile for Directory
             const userProfileRef = doc(db, USER_PROFILE_REF.path, user.uid);
-            setDoc(userProfileRef, {
-                uid: user.uid,
-                displayName: user.displayName || 'Anonymous User',
-                lastSeen: serverTimestamp()
+            setDoc(userProfileRef, { 
+                uid: user.uid, 
+                displayName: user.displayName || 'Wallet User', 
+                lastSeen: serverTimestamp() 
             }, { merge: true }).catch(e => console.error("Error saving user profile:", e));
 
-            // Update UI
+            // 2. UI Update
             walletIdCode.textContent = currentUserId;
-            statusSpan.innerHTML = `${user.displayName || 'Wallet User'} <span class="tag ${isAdmin ? 'admin-tag' : 'user-tag'}">${isAdmin ? 'BANK ADMIN' : 'USER'}</span>`;
+            statusSpan.innerHTML = `Signed In: ${user.displayName || 'User'}`;
+            statusSpan.style.color = 'var(--color-primary-accent)';
             signInBtn.style.display = 'none';
             signOutBtn.style.display = 'inline-block';
-            document.getElementById('copy-status').textContent = '';
+            mineBtn.disabled = false;
+            
+            window.calculateAndDisplayBalance(blocksData); 
 
-            if (isAdmin) {
-                txContainer.innerHTML = `
-                    <div class="section">
-                        <h2>🏦 Admin (Bank) Distribution</h2>
-                        <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" class="input-full">
-                        <input type="number" id="amount" placeholder="Amount (BVN)" value="1000" min="1" step="any" class="input-half">
-                        <button id="distribute-btn" onclick="window.issueFunds()" class="bank-btn">Issue/Distribute Funds</button>
-                        <p id="tx-status" style="color: var(--color-success); margin-top: 10px;">You are the Bank. Your balance is UNLIMITED.</p>
-                    </div>
-                `;
-                document.getElementById('current-balance').textContent = 'UNLIMITED';
-                document.getElementById('mine-btn').disabled = true; 
-            } else {
-                txContainer.innerHTML = `
-                    <div class="section">
-                        <h2>💸 Send BitVen</h2>
-                        <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" class="input-full">
-                        <input type="number" id="amount" placeholder="Amount (BVN)" value="1" min="0.01" step="any" class="input-half">
-                        <input type="text" id="message" placeholder="Optional Message (e.g., 'Payment for service')" class="input-half">
-                        <button id="send-btn" onclick="window.sendTransaction()">Submit Transaction</button>
-                        <p id="tx-status" style="color: var(--color-primary-accent); margin-top: 10px;"></p>
-                    </div>
-
-                    <div class="section request-section">
-                        <h2>✍️ Request Funds (Invoice)</h2>
-                        <input type="text" id="debtor-id" placeholder="Debtor Wallet ID (UID)" class="input-full">
-                        <input type="number" id="request-amount" placeholder="Amount to Request (BVN)" value="5" min="0.01" step="any" class="input-half">
-                        <input type="text" id="request-message" placeholder="Reason for Invoice" class="input-half">
-                        <button id="request-btn" onclick="window.requestFunds()" class="request-btn">Create Invoice</button>
-                        <p id="request-status" style="color: var(--color-secondary-accent); margin-top: 10px;"></p>
-                    </div>
-                `;
-                window.calculateAndDisplayBalance(blocksData); 
-                document.getElementById('mine-btn').disabled = false;
-                window.displayPersonalHistory(blocksData, pendingSnapshotData);
-            }
         } else {
             // Signed out or Anonymous
             currentUserId = null;
-            isAdmin = false;
-            walletIdCode.textContent = 'N/A (Sign in to get a wallet ID)';
+            walletIdCode.textContent = 'N/A';
             statusSpan.innerHTML = 'Signed Out';
+            statusSpan.style.color = 'var(--color-danger)';
             document.getElementById('current-balance').textContent = '0.00';
+            document.querySelector('.balance-label').textContent = 'Current Balance'; // Reset label
             signInBtn.style.display = 'inline-block';
             signOutBtn.style.display = 'none';
-            txContainer.innerHTML = '<div class="section"><p>Please sign in to view transactions or mine.</p></div>';
-            document.getElementById('mine-btn').disabled = true;
-            document.getElementById('copy-status').textContent = '';
-            document.getElementById('personal-history-output').innerHTML = '<p class="no-requests">Sign in to see your history.</p>';
+            mineBtn.disabled = true;
         }
     });
 
     // ====================================================================
-    // TRANSACTION & MINING FUNCTIONS
+    // 4. TRANSACTION & MINING LOGIC
     // ====================================================================
 
-    window.issueFunds = async () => {
-        if (!isAdmin) return;
-
-        const toAddress = document.getElementById('recipient-id').value.trim();
-        const amount = parseFloat(document.getElementById('amount').value);
+    // --- Client-side Validation ---
+    const validateTransactionInput = (toAddress, amount, isSending = true) => {
+        const parsedAmount = window.parseAndRound(amount);
         const txStatus = document.getElementById('tx-status');
-        
-        if (!toAddress || isNaN(amount) || amount <= 0) {
-            txStatus.textContent = "Error: Invalid recipient or amount.";
-            return;
+        const currentBalance = window.parseAndRound(document.getElementById('current-balance').textContent);
+        const isAdmin = currentUserId === MASTER_ADMIN_UID;
+
+
+        if (!currentUserId) { txStatus.textContent = "Error: Please sign in to perform this action."; return false; }
+        if (!toAddress) { txStatus.textContent = "Error: Recipient ID is required."; return false; }
+        if (isNaN(parsedAmount) || parsedAmount <= 0) { txStatus.textContent = "Error: Invalid or zero amount."; return false; }
+        if (toAddress === currentUserId) { 
+            txStatus.textContent = isSending ? "Error: Cannot send to yourself." : "Error: Cannot invoice yourself."; 
+            return false; 
         }
 
-        const newTx = new Transaction('BANK_ADMIN', toAddress, amount, 'Bank Distribution', false);
-        
-        try {
-            await addDoc(PENDING_TX_REF, { ...newTx, timestamp: serverTimestamp() });
-            txStatus.textContent = `BANK: Successfully issued ${amount} BVN to ${toAddress.substring(0, 8)}... (Pending mining)`;
-            document.getElementById('recipient-id').value = '';
-        } catch (e) {
-            txStatus.textContent = "Error issuing funds: " + e.message;
-            console.error("Error issuing funds: ", e);
+        if (isSending && !isAdmin) { // Only check balance if NOT admin
+            const totalCost = parsedAmount + TX_FEE;
+            if (currentBalance < totalCost) { 
+                txStatus.textContent = `Error: Insufficient funds. Need ${window.formatCurrency(totalCost)} BVN (Amount + Fee).`; 
+                return false; 
+            }
         }
-    }
+        return true;
+    };
 
+    // --- STANDARD TRANSACTION (Send/Burn) ---
     window.sendTransaction = async () => {
-        if (isAdmin || !currentUserId) return; 
-
         const toAddress = document.getElementById('recipient-id').value.trim();
-        const amount = parseFloat(document.getElementById('amount').value);
+        const amount = document.getElementById('amount').value;
         const message = document.getElementById('message').value.trim();
         const txStatus = document.getElementById('tx-status');
         
-        if (!toAddress || isNaN(amount) || amount <= 0) { txStatus.textContent = "Error: Invalid recipient or amount."; return; }
-
-        // Simplification: Actual balance check is omitted here, pending mining will fail if funds are insufficient
-        const newTx = new Transaction(currentUserId, toAddress, amount, message, false);
+        if (!validateTransactionInput(toAddress, amount, true)) return;
+        
+        const parsedAmount = window.parseAndRound(amount);
+        const totalCost = parsedAmount + TX_FEE;
+        const txMessage = toAddress === BURN_ADDRESS ? `🔥 BURN: ${message}` : message;
+        
+        // Create the transaction object
+        const newTx = new Transaction(currentUserId, toAddress, parsedAmount, txMessage, false, TX_FEE);
         
         try {
             await addDoc(PENDING_TX_REF, { ...newTx, timestamp: serverTimestamp() });
-            txStatus.textContent = `Transaction submitted! To: ${toAddress.substring(0, 8)}... for ${amount} BVN. (Pending mining)`;
+            txStatus.textContent = `Transaction submitted! Total cost: ${window.formatCurrency(totalCost)} BVN. (Pending mining)`;
             document.getElementById('recipient-id').value = '';
-            document.getElementById('amount').value = '1';
+            document.getElementById('amount').value = '1.00';
             document.getElementById('message').value = '';
 
         } catch (e) {
@@ -550,25 +562,24 @@
         }
     };
 
+    // --- INVOICE REQUEST ---
     window.requestFunds = async () => {
-        if (isAdmin || !currentUserId) return; 
+        const debtorId = document.getElementById('recipient-id').value.trim();
+        const amount = document.getElementById('amount').value;
+        const message = document.getElementById('message').value.trim();
+        const requestStatus = document.getElementById('tx-status');
         
-        const debtorId = document.getElementById('debtor-id').value.trim();
-        const amount = parseFloat(document.getElementById('request-amount').value);
-        const message = document.getElementById('request-message').value.trim();
-        const requestStatus = document.getElementById('request-status');
-        
-        if (!debtorId || isNaN(amount) || amount <= 0) { requestStatus.textContent = "Error: Invalid debtor or amount."; return; }
-        if (debtorId === currentUserId) { requestStatus.textContent = "Error: Cannot invoice yourself."; return; }
+        if (!validateTransactionInput(debtorId, amount, false)) return;
 
-        const requestTx = new Transaction(debtorId, currentUserId, amount, `INVOICE: ${message}`, true);
+        const parsedAmount = window.parseAndRound(amount);
+        const requestTx = new Transaction(debtorId, currentUserId, parsedAmount, `INVOICE: ${message}`, true, 0);
         
         try {
             await addDoc(PENDING_TX_REF, { ...requestTx, timestamp: serverTimestamp() });
-            requestStatus.textContent = `Invoice created for ${debtorId.substring(0, 8)}... for ${amount} BVN. (Pending mining)`;
-            document.getElementById('debtor-id').value = '';
-            document.getElementById('request-amount').value = '5';
-            document.getElementById('request-message').value = '';
+            requestStatus.textContent = `Invoice created for ${debtorId.substring(0, 10)}... for ${window.formatCurrency(parsedAmount)} BVN. (Awaiting payment)`;
+            document.getElementById('recipient-id').value = '';
+            document.getElementById('amount').value = '5.00';
+            document.getElementById('message').value = '';
 
         } catch (e) {
             requestStatus.textContent = "Error submitting request: " + e.message;
@@ -576,27 +587,33 @@
         }
     };
 
-
+    // --- MINING ---
     window.mineBlock = async () => {
-        if (isAdmin || !currentUserId) return;
+        if (!currentUserId) return;
 
         const mineBtn = document.getElementById('mine-btn');
+        const miningStatus = document.getElementById('mining-status');
         mineBtn.disabled = true;
-        mineBtn.textContent = "Mining... (CPU working hard!)";
+        miningStatus.textContent = "Mining in progress... Proof-of-Work calculation started.";
 
         // 1. Get ONLY non-request Pending Transactions
         const txQuery = query(PENDING_TX_REF, orderBy('timestamp'));
         const txSnapshot = await getDocs(txQuery);
         
-        const transactionsToMine = txSnapshot.docs
+        const allPendingDocs = txSnapshot.docs;
+        const transactionsToMine = allPendingDocs
             .filter(doc => !doc.data().isRequest)
-            .map(doc => doc.data());
+            .map(doc => ({...doc.data(), id: doc.id})); // Keep IDs for deletion
         
         if (transactionsToMine.length === 0) {
-             mineBtn.textContent = "No transactions. Mine Block";
+             miningStatus.textContent = "No valid transactions to mine. Mining aborted.";
              mineBtn.disabled = false;
              return;
         }
+        
+        // Calculate total fees
+        const totalFees = transactionsToMine.reduce((sum, tx) => sum + tx.fee, 0);
+        const finalReward = MINING_REWARD + totalFees;
 
         // 2. Get Last Block Hash and Index
         let previousHash = Array(MINING_DIFFICULTY + 1).join("0") + 'GENESIS_HASH'; 
@@ -611,101 +628,108 @@
             nextIndex = lastBlock.index + 1;
         });
         
-        // 3. Add Mining Reward Transaction
-        const rewardTx = new Transaction('SYSTEM_REWARD', currentUserId, MINING_REWARD, 'Mining Reward', false);
+        // 3. Add Mining Reward Transaction (Base 0 + Fees)
+        const rewardTx = new Transaction('SYSTEM_REWARD', currentUserId, finalReward, `Mining Reward (Fees: ${window.formatCurrency(totalFees)})`, false, 0);
         transactionsToMine.push(rewardTx);
 
         // 4. Create and Mine New Block
         const newBlock = new Block(nextIndex, transactionsToMine, previousHash);
+        
+        // This is the CPU intensive part
         newBlock.mineBlock(MINING_DIFFICULTY); 
+        miningStatus.textContent = `Verification successful. Block ${newBlock.index} found. Committing...`;
 
-        // 5. Commit to Firestore (Atomic Batch Write)
+        // 5. Commit to Firestore using a batch
         const batch = writeBatch(db);
 
-        // A. Add the new block to the chain (Firestore will add its own serverTimestamp)
+        // A. Add the new block
         batch.set(doc(CHAIN_REF), { ...newBlock, timestamp: serverTimestamp() });
 
-        // B. Delete all PENDING transactions that were just mined (matching transaction data)
-        txSnapshot.docs.filter(doc => !doc.data().isRequest).forEach(doc => {
+        // B. Delete all PENDING transactions that were just mined
+        allPendingDocs.filter(doc => !doc.data().isRequest).forEach(doc => {
             batch.delete(doc.ref);
         });
 
         try {
             await batch.commit();
-            console.log(`Block ${newBlock.index} successfully mined!`);
+            miningStatus.textContent = `✅ Block #${newBlock.index} MINED! Reward: ${window.formatCurrency(finalReward)} BVN (Fees).`;
         } catch (e) {
-            console.error("Error mining block:", e);
+            miningStatus.textContent = "❌ Error committing block: " + e.message;
+            console.error("Error committing block: ", e);
         } finally {
-            mineBtn.textContent = "Mine New Block";
             mineBtn.disabled = false;
         }
     };
     
     // ====================================================================
-    // DATA DISPLAY & LISTENERS
+    // 5. REAL-TIME DATA LISTENERS & DISPLAY
     // ====================================================================
 
-    // Real-time listener for the Blockchain
+    // Listener for the Blockchain
     onSnapshot(CHAIN_REF, (snapshot) => {
         blocksData = [];
-        snapshot.forEach(doc => blocksData.push(doc.data()));
+        snapshot.forEach(doc => blocksData.push({...doc.data(), id: doc.id}));
         
         blocksData.sort((a, b) => a.index - b.index);
 
         displayChain(blocksData);
         checkChainValidity(blocksData);
-        if (currentUserId && !isAdmin) {
+        if (currentUserId) {
             window.calculateAndDisplayBalance(blocksData);
-            window.displayPersonalHistory(blocksData, pendingSnapshotData);
         }
     }, (error) => console.error("Blockchain Snapshot Error:", error));
     
-    // Real-time listener for Pending Transactions
+    // Listener for Pending Transactions
     onSnapshot(PENDING_TX_REF, (snapshot) => {
-        pendingSnapshotData = snapshot;
-        const realTxCount = snapshot.docs.filter(doc => !doc.data().isRequest).length;
-        document.getElementById('pending-tx-count').textContent = realTxCount;
+        const pendingTxs = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
-        if (currentUserId && !isAdmin) {
-            const requests = snapshot.docs
-                .map(doc => ({...doc.data(), id: doc.id}))
-                .filter(tx => tx.isRequest && tx.fromAddress === currentUserId);
+        const realTxs = pendingTxs.filter(tx => !tx.isRequest);
+        const feesPool = realTxs.reduce((sum, tx) => sum + window.parseAndRound(tx.fee), 0);
+        
+        document.getElementById('pending-tx-count').textContent = realTxs.length;
+        document.getElementById('fees-pool').textContent = window.formatCurrency(feesPool);
+
+        if (currentUserId) {
+            // Filter invoices where the current user is the recipient (toAddress)
+            const requests = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === currentUserId);
             displayRequests(requests);
-            window.displayPersonalHistory(blocksData, pendingSnapshotData);
+        } else {
+             document.getElementById('pending-requests-output').innerHTML = '<p style="color: var(--color-text-subtle);">Sign in to check for pending invoices.</p>';
         }
     }, (error) => console.error("Pending TX Snapshot Error:", error));
 
-    // Real-time listener for the User Directory
+    // Listener for the User Directory
     onSnapshot(USER_PROFILE_REF, (snapshot) => {
-        const users = [];
-        snapshot.forEach(doc => users.push(doc.data()));
-        displayUserDirectory(users);
+        userProfiles = [];
+        snapshot.forEach(doc => userProfiles.push(doc.data()));
+        displayUserDirectory(userProfiles);
     }, (error) => console.error("User Directory Snapshot Error:", error));
 
-    // --- Directory Function ---
+    // --- Directory Display ---
     function displayUserDirectory(users) {
         const output = document.getElementById('user-directory-output');
+        document.getElementById('directory-count').textContent = users.length;
         if (!output) return;
 
         const currentUsers = users.filter(u => u.uid !== currentUserId);
 
         if (currentUsers.length === 0) {
-            output.innerHTML = '<p class="no-requests">No other active users found.</p>';
+            output.innerHTML = '<p style="color: var(--color-text-subtle);">No other active users found.</p>';
             return;
         }
 
         output.innerHTML = currentUsers.map(user => {
-            const uidShort = user.uid.substring(0, 10) + '...';
+            const uidShort = user.uid.substring(0, 12) + '...';
             const statusElementId = `copy-status-dir-${user.uid}`;
             
             return `
                 <div class="directory-item">
                     <div class="user-details">
-                        <span class="user-name">${user.displayName || 'Anon User'}</span>
-                        <code title="Wallet ID: ${user.uid}">${uidShort}</code>
-                        <p id="${statusElementId}" class="copy-status-inline"></p>
+                        <span style="font-weight: 600; color: var(--color-info);">${user.displayName || 'Anon User'}</span>
+                        <code title="Wallet ID: ${user.uid}" style="margin-left: 10px;">${uidShort}</code>
+                        <span id="${statusElementId}" class="copy-status-inline"></span>
                     </div>
-                    <button class="directory-copy-btn" 
+                    <button style="padding: 6px 12px; font-size: 0.8em; box-shadow: none; transform: none; background-color: var(--color-secondary-accent);"
                             onclick="window.copyIdToClipboard('${user.uid}', '${statusElementId}')">
                         Copy ID
                     </button>
@@ -714,30 +738,26 @@
         }).join('');
     }
 
-    // --- Request/Invoice Functions ---
-
+    // --- Incoming Request/Invoice Display ---
     function displayRequests(requests) {
         const output = document.getElementById('pending-requests-output');
         if (!output) return; 
         
-        // Filter: only show requests *sent to* the current user (where current user is the requester/toAddress)
-        const receivedRequests = requests.filter(req => req.toAddress === currentUserId);
-
-        if (receivedRequests.length === 0) {
-            output.innerHTML = '<p class="no-requests">No pending invoices sent to you. Time to get paid!</p>';
+        if (requests.length === 0) {
+            output.innerHTML = '<p style="color: var(--color-text-subtle);">No pending invoices sent to you. You are debt-free!</p>';
             return;
         }
 
-        output.innerHTML = receivedRequests.map(req => {
+        output.innerHTML = requests.map(req => {
             const debtor = (req.fromAddress || 'N/A').substring(0, 10) + '...';
             return `
-                <div class="request-card">
-                    <span class="request-amount">${req.amount.toFixed(2)} BVN</span> requested from: 
+                <div class="request-card" style="border-left: 5px solid var(--color-primary-accent); background: #F3F4F6;">
+                    <span style="font-size: 1.1em; font-weight: bold; color: var(--color-primary-accent);">${window.formatCurrency(req.amount)} BVN</span> requested by: 
                     <code title="Debtor ID: ${req.fromAddress}">${debtor}</code>
-                    <p class="request-msg">${req.message.replace('INVOICE: ', '')}</p>
-                    <button class="pay-request-btn" 
-                            onclick="window.populateSendForm('${req.fromAddress}', ${req.amount.toFixed(2)})">
-                        Pay Invoice
+                    <p style="font-size: 0.9em; color: var(--color-text-subtle); margin: 5px 0 10px 0;">Reason: <em>${req.message.replace('INVOICE: ', '')}</em></p>
+                    <button style="padding: 8px 15px; font-size: 0.9em; background-color: var(--color-success); box-shadow: 0 3px 0 #059669;"
+                            onclick="window.populateSendForm('${req.fromAddress}', ${window.formatCurrency(req.amount)})">
+                        Pay Now
                     </button>
                 </div>
             `;
@@ -745,191 +765,112 @@
     }
     
     window.populateSendForm = (recipientId, amount) => {
+        if (isRequestMode) window.toggleRequestMode(); // Switch back to send mode
         document.getElementById('recipient-id').value = recipientId;
         document.getElementById('amount').value = amount;
-        // Scroll the transaction container into view
-        document.getElementById('transaction-container').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('tx-section-title').scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Personal History Function ---
-    window.displayPersonalHistory = (blocks = [], pendingSnapshot = null) => {
-        if (!currentUserId || isAdmin) return;
 
-        let history = [];
-
-        // 1. Mined Transactions (from Blocks)
-        blocks.forEach(block => {
-            block.transactions.forEach(tx => {
-                // Ensure the transaction has an amount (filter out requests if they somehow made it here)
-                if (tx.amount && (tx.fromAddress === currentUserId || tx.toAddress === currentUserId)) {
-                    const status = tx.fromAddress === 'SYSTEM_REWARD' ? 'MINED (Reward)' : (tx.fromAddress === 'BANK_ADMIN' ? 'MINED (Bank)' : 'MINED');
-                    // Use block's timestamp for mined transactions
-                    history.push({ ...tx, status: status, blockIndex: block.index, timestamp: new Date(block.timestamp) });
-                }
-            });
-        });
-
-        // 2. Pending Activity (from Pending TX Snapshot)
-        if (pendingSnapshot) {
-            pendingSnapshot.docs.forEach(doc => {
-                const tx = doc.data();
-                // Get timestamp safely (use current time if serverTimestamp hasn't resolved or is missing)
-                const timestamp = doc.data().timestamp && doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(); 
-                
-                if (tx.isRequest) {
-                    if (tx.fromAddress === currentUserId) {
-                        history.push({ ...tx, status: 'REQUEST (Sent)', timestamp: timestamp });
-                    } else if (tx.toAddress === currentUserId) {
-                        history.push({ ...tx, status: 'REQUEST (Received)', timestamp: timestamp });
-                    }
-                } else {
-                    if (tx.fromAddress === currentUserId) {
-                        history.push({ ...tx, status: 'PENDING (Sent)', timestamp: timestamp });
-                    } else if (tx.toAddress === currentUserId) {
-                        history.push({ ...tx, status: 'PENDING (Received)', timestamp: timestamp });
-                    }
-                }
-            });
-        }
-
-        history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-        const output = document.getElementById('personal-history-output');
-        if (!output) return;
-
-        if (history.length === 0) {
-            output.innerHTML = '<p class="no-requests">No transactions or requests found in your history.</p>';
-            return;
-        }
-
-        output.innerHTML = history.map(item => {
-            const isOutbound = item.fromAddress === currentUserId && !item.isRequest;
-            const isRequestSent = item.isRequest && item.fromAddress !== currentUserId;
-            
-            let direction, addressCode, amountClass, statusClass;
-
-            if (item.status.includes('MINED') || item.status.includes('Received')) {
-                amountClass = 'amount-in';
-                
-                if (item.status.includes('REQUEST')) {
-                    direction = 'INVOICE FROM:';
-                    addressCode = item.fromAddress;
-                    statusClass = 'status-request-in';
-                } else if (item.fromAddress === 'SYSTEM_REWARD' || item.fromAddress === 'BANK_ADMIN') {
-                    direction = 'FROM:';
-                    addressCode = item.fromAddress;
-                    statusClass = 'status-success';
-                } else {
-                    direction = 'FROM:';
-                    addressCode = item.fromAddress;
-                    statusClass = item.status.includes('MINED') ? 'status-success' : 'status-pending-in';
-                }
-            } else { // Outbound or Sent Request
-                amountClass = 'amount-out';
-                
-                if (item.status.includes('REQUEST')) {
-                    direction = 'INVOICED:';
-                    addressCode = item.toAddress; 
-                    statusClass = 'status-request-out';
-                } else {
-                    direction = 'TO:';
-                    addressCode = item.toAddress;
-                    statusClass = item.status.includes('MINED') ? 'status-danger' : 'status-pending-out';
-                }
-            }
-            
-            const displayAddress = (addressCode || 'N/A').substring(0, 10) + '...';
-            const displayMessage = item.message.replace('INVOICE: ', '') || 'N/A';
-
-            return `
-                <div class="history-item ${statusClass}">
-                    <div class="history-amount ${amountClass}">${isOutbound || isRequestSent ? '-' : '+'}${item.amount.toFixed(2)} BVN</div>
-                    <div class="history-details">
-                        <div class="history-status">${item.status} ${item.blockIndex ? `(Block #${item.blockIndex})` : ''}</div>
-                        <div class="history-address">${direction} <code title="${addressCode}">${displayAddress}</code></div>
-                        <div class="history-message">Message: <em>${displayMessage}</em></div>
-                        <div class="history-time">${item.timestamp.toLocaleString()}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // --- Balance Calculation (Updated to use collected block data) ---
-    window.calculateAndDisplayBalance = (blocks = null) => {
-        if (!currentUserId || isAdmin) return;
+    // --- Balance Calculation (Including Admin Override) ---
+    window.calculateAndDisplayBalance = (blocks) => {
+        if (!currentUserId || !isAuthReady) return;
         
-        function calculate(walletAddress, chain) {
-            let balance = 0;
-            for (const block of chain) {
-                for (const tx of block.transactions) {
-                    if (tx.isRequest) continue; 
-                    
-                    if (tx.fromAddress === walletAddress) {
-                        balance -= tx.amount;
-                    }
-                    if (tx.toAddress === walletAddress) {
-                        balance += tx.amount;
-                    }
+        const balanceDisplay = document.getElementById('current-balance');
+        const balanceLabel = document.querySelector('.balance-label');
+        
+        // --- ADMIN UNLIMITED BITVEN CHECK ---
+        const isAdmin = currentUserId === MASTER_ADMIN_UID;
+
+        if (isAdmin) {
+            balanceDisplay.textContent = '∞'; // Use infinity symbol for dramatic effect
+            balanceDisplay.style.fontSize = '3.5em';
+            balanceDisplay.style.color = 'var(--color-info)'; 
+            balanceLabel.textContent = 'Current Balance (ADMIN MODE)';
+            
+            // Set balance to a high numerical value for calculations without displaying it
+            balanceDisplay.dataset.calculatedBalance = UNLIMITED_BALANCE;
+            return; 
+        }
+
+        // --- STANDARD USER LOGIC ---
+        balanceDisplay.style.fontSize = '3em'; // Reset size
+        balanceDisplay.style.color = 'var(--color-success)'; // Reset color
+        balanceLabel.textContent = 'Current Balance'; // Reset label
+
+        let balance = 0;
+        for (const block of blocks) {
+            for (const tx of block.transactions) {
+                if (tx.isRequest) continue; 
+                
+                // Debit (Sender)
+                if (tx.fromAddress === currentUserId) {
+                    balance -= (window.parseAndRound(tx.amount) + window.parseAndRound(tx.fee)); 
+                }
+                // Credit (Recipient/Miner Reward)
+                if (tx.toAddress === currentUserId) {
+                    balance += window.parseAndRound(tx.amount);
                 }
             }
-            document.getElementById('current-balance').textContent = balance.toFixed(2);
         }
-
-        if (blocks) {
-            calculate(currentUserId, blocks);
-        } else {
-            // Fallback for manual refresh button click
-            getDocs(CHAIN_REF).then(snapshot => {
-                const fetchedBlocks = [];
-                snapshot.forEach(doc => fetchedBlocks.push(doc.data()));
-                fetchedBlocks.sort((a, b) => a.index - b.index);
-                calculate(currentUserId, fetchedBlocks);
-            });
-        }
+        balanceDisplay.textContent = window.formatCurrency(balance);
+        balanceDisplay.dataset.calculatedBalance = balance;
     }
 
-    // --- Chain Display and Validation (Simplified) ---
+    // --- Block Explorer Display ---
     function displayChain(blocks) {
-        // ... (implementation is the same as previous) ...
         const output = document.getElementById('chain-output');
         output.innerHTML = '';
         document.getElementById('chain-length').textContent = blocks.length;
 
-        blocks.forEach(block => {
+        // Display blocks in reverse chronological order
+        [...blocks].reverse().forEach(block => {
+            const totalFees = block.transactions
+                .filter(tx => !tx.isRequest && tx.fee > 0)
+                .reduce((sum, tx) => sum + window.parseAndRound(tx.fee), 0);
+
             const txList = block.transactions
                 .filter(tx => !tx.isRequest) 
                 .map(tx => {
-                const from = (tx.fromAddress || 'N/A').substring(0, 8) + '...';
-                const to = (tx.toAddress || 'N/A').substring(0, 8) + '...';
+                const from = (tx.fromAddress || 'N/A').substring(0, 10) + '...';
+                const to = (tx.toAddress || 'N/A').substring(0, 10) + '...';
                 const isReward = tx.fromAddress === 'SYSTEM_REWARD';
-                const isBank = tx.fromAddress === 'BANK_ADMIN';
+                const isBurn = tx.toAddress === BURN_ADDRESS;
+
+                let txDetails = '';
+                if (isReward) {
+                    // Reward only includes fees since MINING_REWARD is 0.00
+                    txDetails = `💰 Reward (Fees): ${window.formatCurrency(tx.amount)} BVN`;
+                } else if (isBurn) {
+                    txDetails = `🔥 BURN: ${window.formatCurrency(tx.amount)} BVN (Fee: ${window.formatCurrency(tx.fee)})`;
+                } else {
+                    txDetails = `Sent: ${window.formatCurrency(tx.amount)} BVN (Fee: ${window.formatCurrency(tx.fee)})`;
+                }
 
                 return `
-                    <li class="${isReward || isBank ? 'reward-tx' : ''}">
-                        <span class="tx-amount">${tx.amount.toFixed(2)} BVN</span> 
-                        | From: <code title="From ID: ${tx.fromAddress}">${from}</code> 
+                    <li class="${isReward ? 'reward-tx' : ''}">
+                        ${txDetails} | From: <code title="From ID: ${tx.fromAddress}">${from}</code> 
                         | To: <code title="To ID: ${tx.toAddress}">${to}</code>
-                        ${tx.message ? `<br>Message: <em>"${tx.message}"</em>` : ''}
                     </li>`;
             }).join('');
 
+            const date = new Date(block.timestamp).toLocaleString();
+
             const blockHtml = `
-                <div class="block-card ${block.hash.substring(0, MINING_DIFFICULTY) === Array(MINING_DIFFICULTY + 1).join("0") ? 'valid-block' : 'invalid-block'}">
+                <div class="block-card">
                     <div class="block-header">
-                        <strong>Block #${block.index}</strong> 
-                        <span class="difficulty-tag">PoW: ${MINING_DIFFICULTY}</span>
+                        <span>Block #${block.index}</span> 
+                        <span class="fee-info">Total Fees: ${window.formatCurrency(totalFees)} BVN</span>
                     </div>
-                    <div class="block-details">
-                        <div>Hash: <code title="${block.hash}">${block.hash.substring(0, 10)}...</code></div>
-                        <div>Prev. Hash: <code title="${block.previousHash}">${block.previousHash.substring(0, 10)}...</code></div>
-                        <div>Nonce: <strong>${block.nonce}</strong></div>
-                        <div>Time: ${new Date(block.timestamp).toLocaleTimeString()}</div>
-                    </div>
-                    
+                    <p style="font-size: 0.8em; margin: 5px 0; color: var(--color-text-subtle);">
+                        Timestamp: ${date} | Nonce: <strong>${block.nonce}</strong>
+                    </p>
+                    <p style="font-size: 0.8em; margin: 5px 0;">
+                        Hash: <code title="${block.hash}">${block.hash.substring(0, 15)}...</code> 
+                    </p>
                     <details>
-                        <summary>Transactions (${block.transactions.length})</summary>
-                        <ul class="tx-list">${txList}</ul>
+                        <summary style="color: var(--color-primary-accent); font-weight: 500; cursor: pointer;">Transactions (${block.transactions.length})</summary>
+                        <ul style="list-style: none; padding-left: 0; margin-top: 10px;">${txList}</ul>
                     </details>
                 </div>
             `;
@@ -937,37 +878,35 @@
         });
     }
 
+    // --- Chain Validation ---
     function checkChainValidity(chain) {
-        // ... (implementation is the same as previous) ...
         let isValid = true;
+        const target = Array(MINING_DIFFICULTY + 1).join("0");
+        
         for (let i = 1; i < chain.length; i++) {
             const currentBlock = chain[i];
             const previousBlock = chain[i - 1];
 
-            const target = Array(MINING_DIFFICULTY + 1).join("0");
-            
-            const tempBlock = new Block(
-                currentBlock.index, 
-                currentBlock.transactions, 
-                currentBlock.previousHash
-            );
+            // Re-calculate hash to verify proof of work
+            const tempBlock = new Block(currentBlock.index, currentBlock.transactions, currentBlock.previousHash);
             tempBlock.nonce = currentBlock.nonce;
             const calculatedHash = tempBlock.calculateHash();
 
+            // 1. Check current hash (PoW)
             if (currentBlock.hash !== calculatedHash || currentBlock.hash.substring(0, MINING_DIFFICULTY) !== target) {
                 isValid = false;
                 break;
             }
+            // 2. Check previous hash link
             if (currentBlock.previousHash !== previousBlock.hash) {
                 isValid = false;
                 break;
             }
         }
-        document.getElementById('chain-valid').textContent = isValid ? '✅ TRUE' : '❌ FALSE';
+        document.getElementById('chain-valid').textContent = isValid ? 'VALID' : 'INVALID (Chain Tampered)';
         document.getElementById('chain-valid').style.color = isValid ? 'var(--color-success)' : 'var(--color-danger)';
     }
 
 </script>
-
 </body>
 </html>
