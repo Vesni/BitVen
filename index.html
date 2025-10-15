@@ -3,43 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen Forca(BVN)</title>
+    <title>BitVen-Forca</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #047857; /* Emerald-700 */
-            --secondary: #10b981; /* Emerald-500 */
-            --background: #f3f4f6; /* Gray-100 */
-        }
+        /* Custom styles for font and scrollbar, maximizing Tailwind utility use */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--background);
+            background-color: #f8fafc; /* Slate-50 - cleaner background */
         }
-        .card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        }
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-        .btn-primary:hover {
-            background-color: var(--secondary);
-        }
-        .btn-secondary {
-            background-color: #f0fdf4; /* Emerald-50 */
-            color: var(--primary);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: 500;
-            border: 1px solid var(--primary);
-        }
+        
         /* Custom scrollbar for better aesthetics */
         .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
@@ -51,19 +24,57 @@
         .custom-scrollbar::-webkit-scrollbar-track {
             background-color: transparent;
         }
+
+        /* Utility classes for primary branding */
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #10b981; /* Emerald-500 */
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #059669; /* Emerald-600 */
+            transform: translateY(-1px);
+        }
+        .btn-primary:disabled {
+            background-color: #6ee7b7; /* Emerald-300 */
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: white;
+            color: #10b981;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            border: 2px solid #10b981;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #f0fdf4; /* Emerald-50 */
+        }
+        .tx-input {
+             @apply mt-1 block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 p-3;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div id="app" class="max-w-7xl mx-auto">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-extrabold text-gray-900 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-yellow-500 mr-3" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.5 2.5a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd" />
                 </svg>
                 BitVen - By Vesni
             </h1>
-            <p id="auth-status" class="text-sm text-red-500 mt-1 font-semibold"></p>
+            <p id="auth-status" class="text-sm font-semibold mt-2 text-gray-500"></p>
         </header>
 
         <!-- Main Grid Layout -->
@@ -72,27 +83,27 @@
             <!-- Col 1: Wallet & Send Form -->
             <div class="lg:col-span-1 space-y-8">
                 <!-- Wallet/Auth Card -->
-                <div class="card p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Your Wallet</h2>
-                    <div class="space-y-3">
-                        <div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
-                            <span class="text-sm font-medium text-gray-500">Wallet ID (UID)</span>
-                            <code id="user-uid" class="text-xs font-mono text-gray-700 break-all">Loading...</code>
+                <div class="card p-6 border-t-4 border-emerald-500">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Your Wallet</h2>
+                    <div class="space-y-4">
+                        <div class="bg-gray-100 p-4 rounded-xl flex flex-col">
+                            <span class="text-sm font-medium text-gray-500 mb-1">Wallet ID (UID)</span>
+                            <code id="user-uid" class="text-sm font-mono text-gray-700 break-all truncate">Loading...</code>
                         </div>
-                        <div class="bg-emerald-50 p-3 rounded-lg flex justify-between items-center">
-                            <span class="text-sm font-medium text-gray-700">Current Balance</span>
-                            <span id="current-balance" class="text-2xl font-bold text-emerald-700">0.00 BVN</span>
+                        <div class="bg-emerald-50 p-4 rounded-xl flex justify-between items-center shadow-inner">
+                            <span class="text-lg font-semibold text-emerald-800">Current Balance</span>
+                            <span id="current-balance" class="text-3xl font-extrabold text-emerald-700">0.00 BVN</span>
                         </div>
-                        <button id="copy-uid-btn" class="btn-secondary w-full text-center mt-2">Copy Wallet ID</button>
+                        <button id="copy-uid-btn" class="btn-secondary w-full text-center mt-2 text-sm">Copy Wallet ID</button>
                     </div>
                 </div>
 
                 <!-- Send/Invoice Form Card -->
                 <div class="card p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction Hub</h2>
-                    <div class="flex space-x-2 mb-4">
-                        <button id="mode-send" class="flex-1 btn-primary" data-mode="send">Send Payment</button>
-                        <button id="mode-invoice" class="flex-1 btn-secondary" data-mode="invoice">Request Invoice</button>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Transaction Hub</h2>
+                    <div class="flex space-x-2 mb-6">
+                        <button id="mode-send" class="flex-1 btn-primary text-sm" data-mode="send">Send Payment</button>
+                        <button id="mode-invoice" class="flex-1 btn-secondary text-sm" data-mode="invoice">Request Invoice</button>
                     </div>
 
                     <div id="message-box" class="hidden p-3 rounded-lg text-sm mb-4" role="alert"></div>
@@ -100,14 +111,14 @@
                     <form id="transaction-form" class="space-y-4">
                         <div>
                             <label for="recipient-uid" class="block text-sm font-medium text-gray-700">Recipient Wallet ID</label>
-                            <input type="text" id="recipient-uid" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 p-2 border">
+                            <input type="text" id="recipient-uid" required class="tx-input" placeholder="Enter Wallet ID">
                         </div>
                         <div>
                             <label for="amount" class="block text-sm font-medium text-gray-700">Amount (BVN)</label>
-                            <input type="number" id="amount" required min="0.01" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 p-2 border">
+                            <input type="number" id="amount" required min="0.01" step="0.01" class="tx-input" placeholder="e.g., 50.00">
                             <p id="fee-note" class="text-xs text-gray-500 mt-1">Fee: 0.01 BVN (Burned)</p>
                         </div>
-                        <button type="submit" id="submit-btn" class="btn-primary w-full transition duration-150">
+                        <button type="submit" id="submit-btn" class="btn-primary w-full flex items-center justify-center transition duration-150">
                             <span id="submit-text">Send 0.00 BVN</span>
                             <svg id="loading-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -122,19 +133,19 @@
             <div class="lg:col-span-2 space-y-8">
                 <!-- Pending Invoices -->
                 <div class="card p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Pending Invoices TO YOU</h2>
-                    <div id="pending-invoices" class="space-y-3 custom-scrollbar overflow-y-auto max-h-64">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Pending Invoices TO YOU</h2>
+                    <div id="pending-invoices" class="space-y-4 custom-scrollbar overflow-y-auto max-h-64 pr-2">
                         <p class="text-gray-500 text-sm" id="no-invoices">No pending requests.</p>
                     </div>
                 </div>
 
                 <!-- Blockchain History -->
                 <div class="card p-6">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex justify-between items-center">
                         Blockchain Ledger
-                        <span id="chain-length" class="text-sm font-medium text-gray-500">Blocks: 0</span>
+                        <span id="chain-length" class="text-sm font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">Blocks: 0</span>
                     </h2>
-                    <div id="blockchain-history" class="space-y-4 custom-scrollbar overflow-y-auto max-h-96">
+                    <div id="blockchain-history" class="space-y-4 custom-scrollbar overflow-y-auto max-h-96 pr-2">
                         <p class="text-gray-500 text-sm" id="no-blocks">Listening for first block...</p>
                     </div>
                 </div>
@@ -143,7 +154,7 @@
 
         <!-- User Directory (Below the main grid) -->
         <div class="card p-6 mt-8">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Live User Directory</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Live User Directory</h2>
             <div id="user-directory" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 <p class="text-gray-500 text-sm col-span-full">Loading active users...</p>
             </div>
@@ -212,12 +223,15 @@
         
         const showMessage = (text, type = 'error') => {
             messageBoxEl.textContent = text;
-            messageBoxEl.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            messageBoxEl.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-red-50', 'text-red-800', 'bg-emerald-50', 'text-emerald-800', 'border-red-500', 'border-emerald-500');
+            
             if (type === 'error') {
-                messageBoxEl.classList.add('bg-red-100', 'text-red-700');
+                messageBoxEl.classList.add('bg-red-50', 'text-red-800', 'border', 'border-red-400');
             } else {
-                messageBoxEl.classList.add('bg-green-100', 'text-green-700');
+                messageBoxEl.classList.add('bg-emerald-50', 'text-emerald-800', 'border', 'border-emerald-400');
             }
+            messageBoxEl.classList.remove('hidden');
+            
             setTimeout(() => {
                 messageBoxEl.classList.add('hidden');
             }, 5000);
@@ -358,7 +372,12 @@
                 submitTextEl.textContent = 'Processing...';
             } else {
                 loadingSpinnerEl.classList.add('hidden');
-                submitTextEl.textContent = currentMode === 'send' ? `Send ${formatCurrency(amountInput.value || 0)}` : `Request Invoice for ${formatCurrency(amountInput.value || 0)}`;
+                const amount = parseFloat(amountInput.value) || 0;
+                if (currentMode === 'send') {
+                    submitTextEl.textContent = `Send ${formatCurrency(amount)}`;
+                } else {
+                    submitTextEl.textContent = `Request Invoice for ${formatCurrency(amount)}`;
+                }
             }
         };
 
@@ -367,18 +386,18 @@
             const sendBtn = document.getElementById('mode-send');
             const invoiceBtn = document.getElementById('mode-invoice');
 
+            // Reset styles
+            sendBtn.classList.remove('btn-primary', 'btn-secondary');
+            invoiceBtn.classList.remove('btn-primary', 'btn-secondary');
+
             if (mode === 'send') {
                 sendBtn.classList.add('btn-primary');
-                sendBtn.classList.remove('btn-secondary');
                 invoiceBtn.classList.add('btn-secondary');
-                invoiceBtn.classList.remove('btn-primary');
                 feeNoteEl.classList.remove('hidden');
                 recipientInput.placeholder = "Recipient's Wallet ID";
             } else { // invoice
                 invoiceBtn.classList.add('btn-primary');
-                invoiceBtn.classList.remove('btn-secondary');
                 sendBtn.classList.add('btn-secondary');
-                sendBtn.classList.remove('btn-primary');
                 feeNoteEl.classList.add('hidden');
                 recipientInput.placeholder = "Payer's Wallet ID";
             }
@@ -414,15 +433,10 @@
             }
 
             // 2. Create Transactions (Payment and Fee)
-            const paymentTx = createTransaction(currentUID, recipient, amount);
-            const feeTx = createTransaction(currentUID, BURN_ADDRESS, 0.00, TRANSACTION_FEE, true); // Fee is included in the total cost
-            paymentTx.amount = amount - TRANSACTION_FEE; // Deduct fee from amount sent to recipient
-
-            // Corrected Transaction: The sender pays the total (amount + fee).
-            // Tx 1: Sender -> Recipient (Amount)
-            // Tx 2: Sender -> Burn (Fee)
             const txs = [
+                // Tx 1: Sender -> Recipient (Amount)
                 createTransaction(currentUID, recipient, amount),
+                // Tx 2: Sender -> Burn (Fee)
                 createTransaction(currentUID, BURN_ADDRESS, TRANSACTION_FEE, 0.00, true)
             ];
 
@@ -569,13 +583,13 @@
                     const invoiceId = doc.id;
                     
                     const invoiceEl = document.createElement('div');
-                    invoiceEl.className = 'card p-3 bg-red-50 border border-red-200 flex justify-between items-center space-x-4';
+                    invoiceEl.className = 'card p-4 bg-red-50 border border-red-300 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-4 rounded-xl';
                     invoiceEl.innerHTML = `
-                        <div>
-                            <p class="text-sm font-medium text-red-800">Request from <code class="text-xs font-mono text-red-600">${invoice.issuerUid.substring(0, 10)}...</code></p>
-                            <p class="text-xl font-bold text-red-900">${formatCurrency(invoice.amount)}</p>
+                        <div class="flex-grow">
+                            <p class="text-sm font-medium text-red-800">Request from <code class="text-xs font-mono text-red-600 break-all">${invoice.issuerUid}</code></p>
+                            <p class="text-2xl font-extrabold text-red-900 mt-1">${formatCurrency(invoice.amount)}</p>
                         </div>
-                        <button class="pay-invoice-btn btn-primary bg-red-600 hover:bg-red-700"
+                        <button class="pay-invoice-btn btn-primary bg-red-600 hover:bg-red-700 w-full sm:w-auto text-sm"
                             data-id="${invoiceId}"
                             data-payer="${invoice.payerUid}"
                             data-issuer="${invoice.issuerUid}"
@@ -617,13 +631,14 @@
 
                 currentUsers.sort((a, b) => a.uid.localeCompare(b.uid)).forEach(user => {
                     const userEl = document.createElement('div');
-                    userEl.className = 'card p-3 text-center bg-gray-50 hover:bg-emerald-50 cursor-pointer rounded-lg transition duration-150';
+                    userEl.className = 'card p-4 text-center bg-gray-50 hover:bg-emerald-50 cursor-pointer rounded-xl transition duration-150 transform hover:scale-[1.02] active:scale-[0.98] shadow-sm';
                     userEl.innerHTML = `
-                        <p class="text-sm font-semibold">${user.name}</p>
-                        <code class="text-xs font-mono text-gray-600 break-all">${user.uid}</code>
+                        <p class="text-base font-semibold text-gray-800 truncate">${user.name}</p>
+                        <code class="text-xs font-mono text-gray-600 break-all truncate block mt-1">${user.uid}</code>
                     `;
                     userEl.addEventListener('click', () => {
                         recipientInput.value = user.uid;
+                        showMessage(`Recipient set to ${user.name}`, 'success');
                     });
                     directoryEl.appendChild(userEl);
                 });
@@ -652,42 +667,52 @@
                 const blockHeight = chain.length - index;
 
                 const blockEl = document.createElement('div');
-                blockEl.className = 'p-4 border-l-4 border-emerald-500 bg-white rounded-lg shadow';
+                blockEl.className = 'p-5 border-l-4 border-emerald-500 bg-white rounded-xl shadow-md';
                 
                 let txListHTML = '';
                 block.transactions.forEach(tx => {
-                    let type, icon, color;
+                    let type, icon, colorClass, detailText;
+                    
+                    const amountDisplay = formatCurrency(tx.amount + tx.fee);
+                    const txId = tx.id.substring(0, 8);
+
                     if (tx.isFeeTransaction) {
-                        type = 'FEE (BURN)';
+                        type = 'FEE';
                         icon = '🔥';
-                        color = 'text-yellow-600';
+                        colorClass = 'text-yellow-600';
+                        detailText = `<span class="font-mono text-xs text-gray-500 break-all">Burn Address: ${BURN_ADDRESS.substring(0, 10)}...</span>`;
                     } else if (tx.from === currentUID) {
                         type = 'SENT';
-                        icon = '⬇️';
-                        color = 'text-red-600';
+                        icon = '💸';
+                        colorClass = 'text-red-600';
+                        detailText = `<span class="font-mono text-xs text-gray-500 break-all">To: ${tx.to}</span>`;
                     } else if (tx.to === currentUID) {
                         type = 'RECEIVED';
-                        icon = '⬆️';
-                        color = 'text-green-600';
+                        icon = '💰';
+                        colorClass = 'text-green-600';
+                        detailText = `<span class="font-mono text-xs text-gray-500 break-all">From: ${tx.from}</span>`;
                     } else {
                         type = 'OTHER';
-                        icon = '↔️';
-                        color = 'text-gray-600';
+                        icon = '🔗';
+                        colorClass = 'text-gray-600';
+                        detailText = `<span class="font-mono text-xs text-gray-500 break-all">Tx ID: ${txId}</span>`;
                     }
 
                     txListHTML += `
-                        <li class="flex justify-between text-sm py-1 border-b border-gray-100 last:border-b-0">
-                            <span class="flex-1 ${color} font-medium">${icon} ${type}</span>
-                            <span class="flex-1 font-mono text-xs text-gray-500 break-all">From: ${tx.from.substring(0, 10)}...</span>
-                            <span class="flex-1 font-mono text-xs text-gray-500 break-all">To: ${tx.to.substring(0, 10)}...</span>
-                            <span class="w-20 text-right font-bold ${color}">${formatCurrency(tx.amount + tx.fee)}</span>
+                        <li class="grid grid-cols-1 md:grid-cols-5 items-center text-sm py-2 border-b border-gray-100 last:border-b-0">
+                            <span class="col-span-1 flex items-center font-bold ${colorClass}">${icon} ${type}</span>
+                            <span class="col-span-3 text-xs md:text-sm text-gray-600 overflow-hidden truncate mt-1 md:mt-0">${detailText}</span>
+                            <span class="col-span-1 text-right text-lg font-extrabold ${colorClass}">${amountDisplay}</span>
                         </li>
                     `;
                 });
 
                 blockEl.innerHTML = `
-                    <p class="text-xs font-semibold text-gray-500 mb-2">Block #${blockHeight} | ${new Date(block.timestamp).toLocaleString()}</p>
-                    <p class="font-mono text-sm text-gray-700 mb-3 break-all">Hash: ${block.hash}</p>
+                    <div class="flex justify-between items-center mb-3 border-b pb-2 border-gray-100">
+                        <p class="text-base font-bold text-gray-800">Block #${blockHeight}</p>
+                        <p class="text-xs font-semibold text-gray-500">${new Date(block.timestamp).toLocaleTimeString()} ${new Date(block.timestamp).toLocaleDateString()}</p>
+                    </div>
+                    <p class="font-mono text-xs text-gray-500 mb-3 break-all">Hash: ${block.hash}</p>
                     <ul class="divide-y divide-gray-100">${txListHTML}</ul>
                 `;
                 historyEl.appendChild(blockEl);
@@ -714,7 +739,7 @@
                     currentUID = user.uid;
                     isAuthReady = true;
                     userUidEl.textContent = currentUID;
-                    authStatusEl.textContent = 'Authenticated (UID: ' + currentUID.substring(0, 8) + '...)';
+                    authStatusEl.textContent = `Wallet Active (UID: ${currentUID})`;
                     authStatusEl.classList.remove('text-red-500');
                     authStatusEl.classList.add('text-emerald-700');
                     
@@ -770,13 +795,22 @@
             // 4. Utility Button Setup
             document.getElementById('copy-uid-btn').addEventListener('click', () => {
                 const uid = userUidEl.textContent;
-                if (uid && uid !== 'Loading...') {
-                    navigator.clipboard.writeText(uid).then(() => {
+                if (uid && uid !== 'Loading...' && uid !== 'anonymous-user') {
+                    // Use document.execCommand('copy') as navigator.clipboard might fail in some environments
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = uid;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    try {
+                        document.execCommand('copy');
                         showMessage('Wallet ID copied to clipboard!', 'success');
-                    }).catch(err => {
+                    } catch (err) {
                         console.error('Copy error:', err);
                         showMessage('Could not copy text.', 'error');
-                    });
+                    }
+                    document.body.removeChild(tempInput);
+                } else {
+                    showMessage('Cannot copy UID until authenticated.', 'error');
                 }
             });
         };
