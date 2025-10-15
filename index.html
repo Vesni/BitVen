@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen-Forca</title>
+    <title>BitVen Instant System</title>
     <style>
         :root {
             --color-primary: #3b82f6;
@@ -119,7 +119,7 @@
 
         // REQUIRED ADMIN IDENTITY
         const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
-        const EXCHANGE_RATE_NGN = 1000.00; // 1 BVN = 1800 NGN
+        const EXCHANGE_RATE_NGN = 1800.00; // 1 BVN = 1800 NGN
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
@@ -129,49 +129,71 @@
         let auth = null;
         let firebaseConfig = {};
 
+        // 1. Try to load config from the environment
         try {
             firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         } catch(e) {
             console.error("Error parsing __firebase_config:", e);
         }
 
+        // 2. Fallback check: If the config is missing or invalid, use a placeholder
         if (!firebaseConfig || !firebaseConfig.projectId) {
-            // The logic to handle the error when the DOM is ready will be in initializeBitVen
-            console.error("Firebase initialization aborted due to missing project ID.");
-        } else {
-            // Initialize Firebase only if config is valid
+            console.warn("Firebase config is missing Project ID. Using placeholder config for initialization.");
+            // --- PLACEHOLDER CONFIG (REPLACE THIS WITH YOUR ACTUAL FIREBASE CONFIG) ---
+            firebaseConfig = {
+                apiKey: "YOUR_ACTUAL_API_KEY",
+                authDomain: "your-project-id.firebaseapp.com",
+                projectId: "bitven-placeholder-id", // Placeholder to pass the check
+                storageBucket: "your-project-id.appspot.com",
+                messagingSenderId: "123456789012",
+                appId: "1:123456789012:web:abcdef1234567890abcdef"
+            };
+            // --- END PLACEHOLDER CONFIG ---
+        }
+        
+        // 3. Initialize Firebase if we now have a projectId
+        if (firebaseConfig.projectId) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
         }
-        
+
         let userId = null;
         let isAdmin = false;
         let profiles = {};
         let transactions = [];
         let balanceBVN = 0;
 
-        const path = (collectionName, docId) => 
-            docId ? 
-            doc(db, 'artifacts', appId, 'public', 'data', collectionName, docId) : 
-            collection(db, 'artifacts', appId, 'public', 'data', collectionName);
-
-        // These variables can only be defined if db is defined, otherwise they will fail
-        // Since db is conditionally defined, we handle the checks in the listener functions
-        const profilesCollection = () => path('user_profiles_v2');
-        const transactionsCollection = () => path('ledger_transactions_v3');
-        const invoicesCollection = () => path('invoices_v2');
-
+        const path = (collectionName, docId) => {
+            if (!db) return null; // Should be handled by parent logic, but good practice
+            return docId ? 
+                doc(db, 'artifacts', appId, 'public', 'data', collectionName, docId) : 
+                collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+        }
 
         const log = (message, type = 'log') => {
             const statusElement = document.getElementById('status-message');
             if (statusElement) {
+                // Determine background/text colors for the status message
+                let bgColor, textColor;
+                if (type === 'error') {
+                    bgColor = '#fee2e2'; // Red-100
+                    textColor = '#b91c1c'; // Red-700
+                } else if (type === 'warn') {
+                    bgColor = '#fffbe5'; // Yellow-100
+                    textColor = '#78350f'; // Yellow-800
+                } else {
+                    bgColor = '#d1fae5'; // Green-100
+                    textColor = '#065f46'; // Green-700
+                }
+
                 statusElement.textContent = message;
-                statusElement.className = `p-3 rounded-lg text-sm mb-4 ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
-                statusElement.style.backgroundColor = type === 'error' ? '#fee2e2' : '#d1fae5';
-                statusElement.style.color = type === 'error' ? '#b91c1c' : '#065f46';
+                statusElement.style.backgroundColor = bgColor;
+                statusElement.style.color = textColor;
                 statusElement.style.borderRadius = '0.5rem';
                 statusElement.style.marginBottom = '1rem';
+                statusElement.style.padding = '0.75rem'; 
+                statusElement.style.fontSize = '0.875rem';
             }
             console.log(message);
         };
@@ -328,7 +350,7 @@
         // --- Core Logic ---
 
         const saveUserProfile = async (uid, email, displayName, userIsAdmin) => {
-            if (!db) return; // Guard against uninitialized database
+            if (!db) return; 
             const profileRef = path('user_profiles_v2', uid);
             try {
                 await setDoc(profileRef, {
@@ -344,7 +366,7 @@
         };
 
         const authenticate = async () => {
-            if (!auth) return; // Guard against uninitialized auth
+            if (!auth) return; 
             try {
                 log('Attempting authentication...');
                 if (initialAuthToken) {
@@ -420,7 +442,7 @@
         };
 
         const sendBitVen = async (recipientId, amount) => {
-            if (!db) return displayMessage('System not initialized. Cannot perform transaction.', 'error');
+            if (!db) return displayMessage('System not initialized. Cannot perform transaction. Check Firebase configuration.', 'error');
             const FEE_AMOUNT = 0.01;
             const totalDebit = parseFloat(amount) + FEE_AMOUNT;
             const amountFloat = parseFloat(amount);
@@ -466,7 +488,7 @@
         };
 
         const issueBitVen = async (recipientId, amount) => {
-            if (!db) return displayMessage('System not initialized. Cannot perform issuance.', 'error');
+            if (!db) return displayMessage('System not initialized. Cannot perform issuance. Check Firebase configuration.', 'error');
 
             if (!isAdmin) {
                 displayMessage('Only administrators can issue new BVN.', 'error');
@@ -500,10 +522,10 @@
         // --- Firebase Listeners ---
 
         const startListeners = () => {
-            if (!db) return; // Guard against uninitialized database
+            if (!db) return;
 
             // 1. Profile Listener
-            onSnapshot(profilesCollection(), (snapshot) => {
+            onSnapshot(path('user_profiles_v2'), (snapshot) => {
                 profiles = {};
                 snapshot.forEach(doc => {
                     const profile = doc.data();
@@ -520,7 +542,7 @@
             });
 
             // 2. Transaction Log Listener
-            onSnapshot(transactionsCollection(), (snapshot) => {
+            onSnapshot(path('ledger_transactions_v3'), (snapshot) => {
                 transactions = [];
                 snapshot.forEach(doc => {
                     transactions.push(doc.data());
@@ -533,7 +555,7 @@
             });
 
             // 3. Invoices Listener (Placeholder)
-            onSnapshot(invoicesCollection(), (snapshot) => {
+            onSnapshot(path('invoices_v2'), (snapshot) => {
                 log('Invoices snapshot received.');
             }, (error) => {
                 log('Error listening to invoices: ' + error.message, 'error');
@@ -543,17 +565,18 @@
         // --- Initial Setup ---
 
         const initializeBitVen = () => {
+            const signInButton = document.getElementById('sign-in-button');
+            
             // Check 1: If Firebase failed to initialize (invalid config)
             if (!auth || !db) {
-                const signInButton = document.getElementById('sign-in-button');
-                document.getElementById('status-message').innerHTML = '<span style="color:red; font-weight:bold;">Firebase Error: Project ID not configured. Sign-in disabled.</span>';
+                document.getElementById('status-message').innerHTML = '<span style="color:red; font-weight:bold;">Firebase Not Connected! Replace the placeholder config with your actual Firebase config to enable sign-in and features.</span>';
                 
                 if(signInButton) {
                     signInButton.disabled = true;
                     signInButton.textContent = "Config Error";
                     signInButton.style.backgroundColor = 'gray';
                 }
-                return; // Safe return inside a function
+                return;
             }
 
             // Check 2: All good, proceed with Auth flow
