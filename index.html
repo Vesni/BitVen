@@ -269,13 +269,13 @@
             </div>
         </div>
 
-        <!-- Blockchain Ledger -->
+        <!-- Transaction Ledger -->
         <div class="card">
-            <h2 class="card-header">Blockchain Ledger</h2>
-            <div id="chain-validation-status">Validating...</div>
-            <div id="blockchain-list">
-                <!-- Blocks will be injected here -->
-                <p>Loading blockchain...</p>
+            <h2 class="card-header">Transaction Ledger (Real-Time Log)</h2>
+            <div id="validation-status">Real-time transactions only (no block integrity check).</div>
+            <div id="ledger-list">
+                <!-- Transactions will be injected here -->
+                <p>Loading transactions...</p>
             </div>
         </div>
     </div>
@@ -310,7 +310,7 @@
     // --- 1. Firebase Imports ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithCustomToken, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, writeBatch, serverTimestamp, setLogLevel, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, query, writeBatch, serverTimestamp, setLogLevel, orderBy, setDoc as setDocWithId } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // --- 2. Configuration & Constants ---
     const ADMIN_EMAIL = "lanushomeappliances@gmail.com";
@@ -340,12 +340,14 @@
     let isAdmin = false;
 
     // Database References (Will be set after DB init)
-    let CHAIN_REF;
+    // RENAMED TO LEDGER_REF and updated path
+    let LEDGER_REF; 
     let INVOICE_REF;
     let USER_PROFILES_REF;
 
     // Local Data Cache
-    let blocksData = [];
+    // CHANGED from blocksData to transactionsData
+    let transactionsData = [];
     let pendingInvoicesData = [];
     let userProfiles = [];
     let currentBalance = 0;
@@ -365,9 +367,9 @@
         }
     };
 
-    // --- 4. Data Structures (Classes for clarity, serialized before Firestore) ---
+    // --- 4. Data Structures (Class for clarity) ---
 
-    // Class to represent a transaction (payment or reward)
+    // Class to represent a transaction (payment, reward, or fee)
     class Transaction {
         constructor(fromAddress, toAddress, amount, message = '', isReward = false, isFee = false, isRequest = false) {
             this.fromAddress = fromAddress;
@@ -395,37 +397,7 @@
         }
     }
 
-    // Class to represent a Block in the chain
-    class Block {
-        constructor(index, transactions, previousHash = '') {
-            this.index = index;
-            this.timestamp = Date.now();
-            this.transactions = transactions;
-            this.previousHash = previousHash;
-            this.hash = this.calculateHash();
-        }
-
-        calculateHash() {
-            const dataString = this.index + this.timestamp + JSON.stringify(this.transactions.map(tx => tx.toPlainObject())) + this.previousHash;
-            let hash = 0;
-            for (let i = 0; i < dataString.length; i++) {
-                hash = (hash << 5) - hash + dataString.charCodeAt(i);
-                hash |= 0; // Convert to 32bit integer
-            }
-            return Math.abs(hash).toString(36);
-        }
-
-        // Converts block (and its transactions) to a plain JavaScript object for Firestore
-        toPlainObject() {
-            return {
-                index: this.index,
-                timestamp: this.timestamp,
-                transactions: this.transactions.map(tx => tx.toPlainObject()),
-                previousHash: this.previousHash,
-                hash: this.hash
-            };
-        }
-    }
+    // --- REMOVED Block Class ---
 
     // --- 5. Firebase Initialization and Authentication ---
 
@@ -435,19 +407,23 @@
             return;
         }
         
-        // 1. Blockchain Listener (Reads the Chain and calculates Balance)
-        onSnapshot(query(CHAIN_REF, orderBy('index', 'desc')), (snapshot) => {
-            log("Blockchain snapshot received.");
-            blocksData = snapshot.docs.map(doc => {
+        // 1. Transaction Ledger Listener (Reads all transactions and calculates Balance)
+        // Order by timestamp descending to get the most recent transactions first in the log
+        onSnapshot(query(LEDGER_REF, orderBy('timestamp', 'desc')), (snapshot) => {
+            log("Transaction Ledger snapshot received.");
+            
+            // Populate the transactionsData array directly from the documents
+            transactionsData = snapshot.docs.map(doc => {
                 const data = doc.data();
-                // Deserialize transactions back into class instances for correct balance calculation
-                data.transactions = data.transactions.map(tx => Object.assign(new Transaction(), tx));
-                return Object.assign(new Block(), data);
+                // We don't need to deserialize into a Block, just map to Transaction object
+                return Object.assign(new Transaction(), data);
             });
             
-            blocksData.sort((a, b) => a.index - b.index); // Ensure ascending order
+            // Ensure data is sorted ascending for balance calculation, then reverse for display
+            transactionsData.sort((a, b) => a.timestamp - b.timestamp); 
+            
             window.calculateAndDisplayBalance();
-            window.renderBlockchain();
+            window.renderTransactionLedger(); // RENAMED function
         });
 
         // 2. Pending Invoices Listener (Requests sent TO the current user)
@@ -527,7 +503,8 @@
 
             // 2. Set Database References
             const publicPath = `artifacts/${appId}/public/data`;
-            CHAIN_REF = collection(db, `${publicPath}/blockchain_chain_v2`);
+            // UPDATED to use a simple transaction ledger collection
+            LEDGER_REF = collection(db, `${publicPath}/ledger_transactions_v3`);
             INVOICE_REF = collection(db, `${publicPath}/invoices_v2`);
             USER_PROFILES_REF = collection(db, `${publicPath}/user_profiles_v2`);
 
@@ -597,48 +574,35 @@
             tempInput.select();
             document.execCommand('copy');
             document.body.removeChild(tempInput);
-            alert("Wallet ID copied to clipboard!"); // Replaced with alert for now
+            // Replaced with custom modal in a real app, but using alert for simplicity
+            alert("Wallet ID copied to clipboard!"); 
         }
     };
     
     // --- 7. Core Ledger Logic ---
 
-    // Function to ensure all objects are converted to plain objects for saving
-    const serializeBlock = (block) => {
-        return {
-            index: block.index,
-            timestamp: block.timestamp,
-            previousHash: block.previousHash,
-            hash: block.hash,
-            transactions: block.transactions.map(tx => tx.toPlainObject()),
-        };
-    };
-
-    const addBlockToChain = async (transactions) => {
+    // RENAMED from addBlockToChain to recordTransactions
+    const recordTransactions = async (transactions) => {
         if (!db || !currentUID) return log("Database or user not ready.", true);
 
-        // 1. Get the last block to set the previousHash
-        const lastBlock = blocksData.length > 0 ? blocksData[blocksData.length - 1] : null;
-        const previousHash = lastBlock ? lastBlock.hash : '0'; // Genesis block hash is '0'
-        const newIndex = lastBlock ? lastBlock.index + 1 : 1;
-
-        // 2. Create the new Block object
-        const newBlock = new Block(newIndex, transactions, previousHash);
-
-        // 3. Prepare batch write for atomicity (Block + Deleting Invoice if applicable)
+        // Prepare batch write for atomicity (Payment + Fee)
         const batch = writeBatch(db);
-        const blockRef = doc(CHAIN_REF, newBlock.hash); // Use hash as doc ID for integrity check
         
-        // 4. Save the new Block (MUST serialize the data)
-        batch.set(blockRef, serializeBlock(newBlock));
+        // Save each transaction atomically
+        transactions.forEach(tx => {
+            // Use an auto-generated ID for each transaction document
+            const transactionRef = doc(LEDGER_REF); 
+            // Save the transaction using the auto-generated ID
+            batch.set(transactionRef, tx.toPlainObject());
+        });
         
-        // 5. Commit the batch write
+        // Commit the batch write
         try {
             await batch.commit();
-            log(`Block #${newIndex} created successfully. Hash: ${newBlock.hash}`);
+            log(`Successfully committed ${transactions.length} transaction(s) to the ledger.`);
             return true;
         } catch (e) {
-            log(`Failed to commit block: ${e.message}`, true);
+            log(`Failed to commit transactions batch: ${e.message}`, true);
             alert(`Transaction failed: ${e.message}`);
             return false;
         }
@@ -681,29 +645,27 @@
 
         log(`Initiating instant payment: ${sendAmount} BVN from ${currentUID} to ${recipientAddress}`);
         
-        const transactions = [];
+        const transactionsToRecord = [];
 
         // 1. Main Payment Transaction
-        transactions.push(new Transaction(currentUID, recipientAddress, sendAmount, sendMsg));
+        transactionsToRecord.push(new Transaction(currentUID, recipientAddress, sendAmount, sendMsg));
 
         // 2. Transaction Fee (Skipped for admin)
         if (!isAdmin) {
-            transactions.push(new Transaction(currentUID, BURN_ADDRESS, TX_FEE, "Network Fee", false, true));
+            transactionsToRecord.push(new Transaction(currentUID, BURN_ADDRESS, TX_FEE, "Network Fee", false, true));
         }
 
-        // 3. Clear pending invoice if this payment corresponds to one
+        // 3. Clear pending invoice logic remains simple (no auto-delete from DB)
         const invoicePaid = pendingInvoicesData.find(inv => 
             inv.fromAddress === recipientAddress && inv.toAddress === currentUID && inv.amount === sendAmount
         );
         
         if (invoicePaid) {
-            log(`Detected and paying invoice ID: ${invoicePaid.id}`);
-            // Note: We don't delete the invoice here. We rely on the user to manually remove it 
-            // OR use a separate process to clean up old invoices, keeping logic simple.
+            log(`Detected matching invoice ID: ${invoicePaid.id}`);
         }
 
-        // 4. Add the block instantly (Bypassing mining pool)
-        await addBlockToChain(transactions);
+        // 4. Record the transactions atomically
+        await recordTransactions(transactionsToRecord);
         
         // Clear inputs
         document.getElementById('recipient-address').value = '';
@@ -741,7 +703,8 @@
                 true // Flag as a request
             );
 
-            await setDoc(doc(INVOICE_REF), requestTx.toPlainObject());
+            // Use setDoc without args to auto-generate a document ID
+            await setDoc(doc(INVOICE_REF), requestTx.toPlainObject()); 
             log(`Invoice request sent to ${debtorAddress} for ${requestAmount} BVN.`);
             alert(`Invoice for ${requestAmount} BVN created successfully and sent to ${debtorAddress}!`);
 
@@ -774,14 +737,13 @@
             return;
         }
         
-        blocksData.forEach(block => {
-            block.transactions.forEach(tx => {
-                if (tx.toAddress === currentUID) {
-                    balance += tx.amount; // Received
-                } else if (tx.fromAddress === currentUID) {
-                    balance -= tx.amount; // Sent (includes fees)
-                }
-            });
+        // Iterate directly over the flat transactionsData array
+        transactionsData.forEach(tx => {
+            if (tx.toAddress === currentUID) {
+                balance += tx.amount; // Received
+            } else if (tx.fromAddress === currentUID) {
+                balance -= tx.amount; // Sent (includes fees)
+            }
         });
 
         currentBalance = balance;
@@ -791,74 +753,57 @@
             `${balance.toFixed(2)} BVN <span style="font-size: 0.6em; color: var(--secondary-color);">(${ngnValue})</span>`;
     };
 
-    window.renderBlockchain = () => {
-        const list = document.getElementById('blockchain-list');
+    // RENAMED from renderBlockchain to renderTransactionLedger
+    window.renderTransactionLedger = () => {
+        const list = document.getElementById('ledger-list');
         list.innerHTML = '';
         const currentUID = auth.currentUser?.uid || 'N/A';
         
-        if (blocksData.length === 0) {
-            list.innerHTML = '<p>Blockchain is empty (Genesis Block missing).</p>';
+        if (transactionsData.length === 0) {
+            list.innerHTML = '<p>The ledger is currently empty.</p>';
             return;
         }
 
-        // Validate chain integrity (optional check)
-        let isChainValid = true;
-        for (let i = 1; i < blocksData.length; i++) {
-            const currentBlock = blocksData[i];
-            const previousBlock = blocksData[i - 1];
+        // Reverse the array to show most recent at the top for the main ledger view
+        const displayTransactions = transactionsData.slice().reverse();
 
-            if (currentBlock.previousHash !== previousBlock.hash) {
-                isChainValid = false;
-                break;
-            }
-        }
-        document.getElementById('chain-validation-status').innerHTML = isChainValid 
-            ? `<span style="color: var(--success-color); font-weight: bold;">Chain is Valid (Total Blocks: ${blocksData.length})</span>`
-            : `<span style="color: var(--danger-color); font-weight: bold;">CHAIN IS BROKEN!</span>`;
-
-
-        blocksData.slice().reverse().forEach(block => {
-            const blockEl = document.createElement('div');
-            blockEl.className = 'tx-item';
+        displayTransactions.forEach(tx => {
+            const transactionEl = document.createElement('div');
+            transactionEl.className = 'tx-item';
             
-            const transactionsHtml = block.transactions.map(tx => {
-                let statusColor = 'var(--text-color)';
-                if (tx.isFee) statusColor = 'var(--secondary-color)';
-                else if (tx.toAddress === currentUID) statusColor = 'var(--success-color)';
-                else if (tx.fromAddress === currentUID) statusColor = 'var(--danger-color)';
+            let statusColor = 'var(--text-color)';
+            if (tx.isFee) statusColor = 'var(--secondary-color)';
+            else if (tx.toAddress === currentUID) statusColor = 'var(--success-color)';
+            else if (tx.fromAddress === currentUID) statusColor = 'var(--danger-color)';
 
-                const amountText = `${tx.amount.toFixed(2)} BVN`;
-                const ngnValue = (tx.amount * BVN_TO_NGN_RATE).toLocaleString('en-NG', { maximumFractionDigits: 0 });
-                const valueDisplay = `(${ngnValue})`;
+            const amountText = `${tx.amount.toFixed(2)} BVN`;
+            const ngnValue = (tx.amount * BVN_TO_NGN_RATE).toLocaleString('en-NG', { maximumFractionDigits: 0 });
+            const valueDisplay = `(${ngnValue})`;
 
-                let direction = 'TX';
-                if (tx.isFee) direction = 'FEE';
-                else if (tx.toAddress === currentUID) direction = 'IN';
-                else if (tx.fromAddress === currentUID) direction = 'OUT';
+            let direction = 'TX';
+            if (tx.isFee) direction = 'FEE';
+            else if (tx.toAddress === currentUID) direction = 'IN';
+            else if (tx.fromAddress === currentUID) direction = 'OUT';
 
 
-                return `
-                    <p style="color: ${statusColor}; font-size: 0.9em; margin: 5px 0;">
-                        [${direction}] <strong>${amountText}</strong> ${valueDisplay}<br>
-                        &rarr; From: ${tx.fromAddress === currentUID ? 'YOU' : tx.fromAddress.substring(0, 8)}...<br>
-                        &rarr; To: ${tx.toAddress === currentUID ? 'YOU' : tx.toAddress.substring(0, 8)}...<br>
-                        <span style="font-style: italic;">"${tx.message.substring(0, 50)}${tx.message.length > 50 ? '...' : ''}"</span>
-                    </p>`;
-            }).join('<hr style="border-top: 1px dashed #ccc; margin: 5px 0;">');
-
-            blockEl.innerHTML = `
-                <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 10px;">BLOCK #${block.index}</div>
-                <p><strong>Hash:</strong> <span class="code-block" style="font-size: 0.75em;">${block.hash.substring(0, 20)}...</span></p>
-                <p><strong>Previous:</strong> <span class="code-block" style="font-size: 0.75em;">${block.previousHash.substring(0, 20)}...</span></p>
-                <p style="font-size: 0.8em; color: var(--secondary-color);">Mined: ${new Date(block.timestamp).toLocaleString()}</p>
-                <details>
-                    <summary style="cursor: pointer; color: var(--primary-color);">View Transactions (${block.transactions.length})</summary>
-                    <div style="margin-top: 10px; padding-left: 10px;">${transactionsHtml}</div>
-                </details>
+            transactionEl.innerHTML = `
+                <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 10px; color: ${statusColor};">
+                    ${direction}: ${amountText} ${valueDisplay}
+                </div>
+                <p style="font-size: 0.9em; margin: 5px 0;">
+                    &rarr; From: <strong>${tx.fromAddress === currentUID ? 'YOU' : tx.fromAddress.substring(0, 15)}...</strong><br>
+                    &rarr; To: <strong>${tx.toAddress === currentUID ? 'YOU' : tx.toAddress.substring(0, 15)}...</strong>
+                </p>
+                <p style="font-size: 0.8em; color: var(--secondary-color);">
+                    Log Time: ${new Date(tx.timestamp).toLocaleString()}
+                </p>
+                <div style="font-style: italic; font-size: 0.9em; margin-top: 5px;">
+                    "${tx.message.substring(0, 80)}${tx.message.length > 80 ? '...' : ''}"
+                </div>
             `;
-            list.appendChild(blockEl);
+            list.appendChild(transactionEl);
         });
-        window.renderPersonalHistory(); // Update personal history after chain render
+        window.renderPersonalHistory(); // Update personal history after ledger render
     };
 
     window.renderUserDirectory = () => {
@@ -936,41 +881,39 @@
         historyEl.innerHTML = '';
         const currentUID = auth.currentUser?.uid || 'N/A';
 
-        if (!currentUID || blocksData.length === 0) {
+        if (!currentUID || transactionsData.length === 0) {
             historyEl.innerHTML = '<p>Sign in to view history.</p>';
             return;
         }
 
-        const allTransactions = [];
+        const allActivity = [];
 
-        // 1. Transactions from Blockchain
-        blocksData.forEach(block => {
-            block.transactions.forEach(tx => {
-                if (tx.fromAddress === currentUID || tx.toAddress === currentUID) {
-                    allTransactions.push({ ...tx, type: 'CLEARED' });
-                }
-            });
+        // 1. Transactions from Ledger (flat array)
+        transactionsData.forEach(tx => {
+            if (tx.fromAddress === currentUID || tx.toAddress === currentUID) {
+                allActivity.push({ ...tx, type: 'CLEARED' });
+            }
         });
 
         // 2. Pending Invoices SENT TO YOU
         pendingInvoicesData.forEach(invoice => {
             if (invoice.fromAddress === currentUID) { // Current user is the debtor
-                allTransactions.push({ ...invoice, type: 'INVOICE_DUE' });
+                allActivity.push({ ...invoice, type: 'INVOICE_DUE' });
             } else if (invoice.toAddress === currentUID) { // Current user is the creditor
-                 allTransactions.push({ ...invoice, type: 'INVOICE_SENT' });
+                 allActivity.push({ ...invoice, type: 'INVOICE_SENT' });
             }
         });
 
 
         // Sort all activity by timestamp (most recent first)
-        allTransactions.sort((a, b) => b.timestamp - a.timestamp);
+        allActivity.sort((a, b) => b.timestamp - a.timestamp);
 
-        if (allTransactions.length === 0) {
+        if (allActivity.length === 0) {
             historyEl.innerHTML = '<p>No activity yet.</p>';
             return;
         }
 
-        allTransactions.slice(0, 20).forEach(item => { // Show top 20 events
+        allActivity.slice(0, 20).forEach(item => { // Show top 20 events
             const historyItem = document.createElement('div');
             historyItem.className = 'tx-item';
 
