@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen-Forca</title>
+    <title>BitVen Forca</title>
     <!-- Include crypto-js for SHA256 Hashing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     
@@ -224,7 +224,7 @@
 <body>
 
 <div class="container">
-    <h1>💰 The BitVen Ledger</h1>
+    <h1>⚡ The BitVen - Made By Vesni</h1>
     
     <div class="grid-container">
 
@@ -255,17 +255,8 @@
             <div id="tx-status" class="status-message" style="display:none;"></div>
         </div>
         
-        <!-- Mining Pool (Top Right) -->
-        <div class="section">
-            <h2>⛏️ Mining Pool</h2>
-            <p>Pending Transactions: <span id="pending-tx-count">0</span></p>
-            <p>Difficulty: <span id="difficulty-display">5</span> (Target leading zeros)</p>
-            <button id="mine-btn" onclick="window.mineBlock()" disabled>Start Mining Block</button>
-            <div id="mine-status" class="status-message" style="display:none;"></div>
-        </div>
-
         <!-- Transaction / Request (Middle Left) -->
-        <div class="section" id="transaction-section">
+        <div class="section" id="transaction-section" style="grid-column: 1 / 2;">
             <h2 id="tx-header">💸 Send BitVen</h2>
             <form id="tx-form">
                 <input type="text" id="recipient-id" placeholder="Recipient Wallet ID (UID)" required>
@@ -279,22 +270,25 @@
         </div>
 
         <!-- User Directory (Middle Center) -->
-        <div class="section">
+        <div class="section" style="grid-column: 2 / 3;">
             <h2>👥 User Directory</h2>
             <div id="directory-list">Loading users...</div>
         </div>
 
         <!-- Pending Invoices (Middle Right) -->
-        <div class="section">
+        <div class="section" style="grid-column: 3 / 4;">
             <h2>🧾 Pending Invoices Sent To Me</h2>
-            <p>These are requests for payment sent to your Wallet ID.</p>
+            <p>Requests for payment waiting for your action.</p>
             <div id="invoices-output">No pending invoices.</div>
         </div>
+        
+        <!-- Placeholder for old mining pool location -->
+        <div style="display: none;"></div>
 
         <!-- Blockchain Display (Bottom Full Width) -->
         <div class="section section-full">
-            <h2>🔗 Blockchain Ledger</h2>
-            <p>Total Blocks: <span id="chain-length">0</span> | Chain Valid: <span id="chain-valid">Checking...</span></p>
+            <h2>🔗 Blockchain Ledger (Blocks = Instant Transactions)</h2>
+            <p>Total Transactions/Blocks: <span id="chain-length">0</span> | Chain Valid: <span id="chain-valid">Checking...</span></p>
             <div id="chain-output">Loading blocks...</div>
         </div>
 
@@ -318,8 +312,8 @@
     // ====================================================================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { 
-        getFirestore, collection, getDocs, addDoc, query, orderBy, limit,
-        onSnapshot, writeBatch, doc, setDoc, getDoc, setLogLevel
+        getFirestore, collection, getDocs, addDoc, 
+        onSnapshot, writeBatch, doc, setDoc, setLogLevel, deleteDoc
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { 
         getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
@@ -343,54 +337,55 @@
     // --- Global App Variables ---
     let app, db, auth, currentUserId = null;
     let blocksData = [];
-    let pendingSnapshotData = [];
+    let invoicesSnapshotData = []; // New array for pending invoices
     let isRequestMode = false;
     let isAuthReady = false;
 
-    // --- Economic Constants ---
-    const MINING_REWARD = 5;
+    // --- Economic Constants (Simplified for instant ledger) ---
     const TX_FEE = 0.01;
-    const MINING_DIFFICULTY = 5; // Number of leading zeros required for PoW
+    const MINING_REWARD = 0; // No mining, no reward
     const BURN_ADDRESS = "0xBURN-BITVEN-SUPPLY";
-    // ADMIN UID UPDATED AS REQUESTED
     const MASTER_ADMIN_UID = "pPLyBfQ68OVLx62NazbMeJw9lN63"; 
     const UNLIMITED_BALANCE = Number.MAX_SAFE_INTEGER;
+    const DIFFICULTY = 1; // Minimal difficulty for instant hash generation
 
-    // --- Firebase Paths (Ensuring correct public path) ---
+    // --- Firebase Paths (Updated to remove pending_transactions) ---
     const BASE_PATH = `artifacts/${APP_ID}/public/data/`;
-    let CHAIN_REF, PENDING_TX_REF, USER_PROFILES_REF;
+    let CHAIN_REF, INVOICES_REF, USER_PROFILES_REF;
     
     // ====================================================================
     // 2. CORE BLOCKCHAIN CLASSES
     // ====================================================================
 
     class Transaction {
-        constructor(fromAddress, toAddress, amount, message = '', isRequest = false) {
+        constructor(fromAddress, toAddress, amount, message = '', isRequest = false, invoiceId = null) {
             this.fromAddress = fromAddress;
             this.toAddress = toAddress;
             this.amount = parseFloat(amount);
             this.timestamp = Date.now();
             this.message = message;
-            this.isRequest = isRequest; // True if this is an invoice/request for payment
+            this.isRequest = isRequest;
+            this.invoiceId = invoiceId; // Used when paying an existing invoice
         }
         // Returns the effective debit amount (amount + fee)
         get effectiveAmount() {
-            if (this.fromAddress === 'SYSTEM_REWARD' || this.isRequest) return 0;
             return this.amount + TX_FEE;
         }
     }
 
     class Block {
+        // Blocks now represent an instant transaction, containing the payment, fee, and (if applicable) a system entry.
         constructor(index, transactions, previousHash = '') {
             this.index = index;
             this.timestamp = Date.now();
             this.transactions = transactions;
             this.previousHash = previousHash;
-            this.nonce = 0;
+            this.nonce = 0; // Kept for blockchain integrity but not actively used for PoW
             this.hash = this.calculateHash();
         }
 
         calculateHash() {
+            // Simplified hash calculation
             return CryptoJS.SHA256(
                 this.index + 
                 this.previousHash + 
@@ -400,19 +395,10 @@
             ).toString();
         }
 
-        mineBlock(difficulty) {
-            const target = Array(difficulty + 1).join("0");
-            let attempts = 0;
-            while (this.hash.substring(0, difficulty) !== target) {
-                this.nonce++;
-                this.hash = this.calculateHash();
-                attempts++;
-                // Simple feedback for long mining operations (optional console log)
-                if (attempts % 100000 === 0) {
-                    console.log(`Mining... Attempts: ${attempts}`);
-                }
-            }
-            console.log(`BLOCK MINED: ${this.hash} (Nonce: ${this.nonce}, Attempts: ${attempts})`);
+        // Simplified "mining" is now just hash calculation
+        mineBlock() {
+            // In an instant ledger, mining is just a quick hashing step
+            this.hash = this.calculateHash();
         }
     }
     
@@ -439,20 +425,16 @@
             db = getFirestore(app);
             auth = getAuth(app);
             
-            // Define collections only after db is initialized
+            // Define collections
             CHAIN_REF = collection(db, BASE_PATH + "blockchain_chain_v2");
-            PENDING_TX_REF = collection(db, BASE_PATH + "pending_transactions_v2");
+            INVOICES_REF = collection(db, BASE_PATH + "invoices_v2"); // NEW COLLECTION
             USER_PROFILES_REF = collection(db, BASE_PATH + "user_profiles_v2");
             
-            // Set App ID in UI
             document.getElementById('app-id').textContent = APP_ID;
 
-            // Authentication flow
             log("Attempting authentication...");
             
-            // FIX 1: Removed anonymous sign-in fallback to prevent 'auth/admin-restricted-operation' error.
             if (INITIAL_AUTH_TOKEN) {
-                log("Sign-in detected. Attempting with custom token...");
                 try {
                     await signInWithCustomToken(auth, INITIAL_AUTH_TOKEN);
                     log("Custom token sign-in successful.");
@@ -471,10 +453,7 @@
                     document.getElementById('wallet-id').textContent = currentUserId;
                     document.getElementById('auth-status').textContent = `Signed in as: ${user.displayName || 'Anonymous'}`;
                     
-                    // Enable/Disable buttons based on sign-in status
                     toggleUI(true);
-                    
-                    // Run initial data loads
                     setupRealtimeListeners();
                     saveUserProfile(user);
                 } else {
@@ -485,11 +464,9 @@
                     toggleUI(false);
                 }
                 
-                // Set admin status display
                 const balanceSpan = document.getElementById('current-balance');
                 if (currentUserId === MASTER_ADMIN_UID) {
                     balanceSpan.classList.add('balance-admin');
-                    document.getElementById('mine-btn').disabled = true;
                 } else {
                     balanceSpan.classList.remove('balance-admin');
                 }
@@ -502,15 +479,12 @@
         }
     }
     
-    // Utility to toggle button states
     function toggleUI(enabled) {
         document.getElementById('submit-tx-btn').disabled = !enabled;
-        document.getElementById('mine-btn').disabled = !enabled || (currentUserId === MASTER_ADMIN_UID);
         document.getElementById('sign-in-btn').disabled = enabled;
         document.getElementById('sign-out-btn').disabled = !enabled;
     }
 
-    // Helper logging function (same as debugger)
     function log(message, isError = false) {
         const logOutputElement = document.getElementById('log-output');
         if (logOutputElement) {
@@ -530,7 +504,6 @@
     window.signInWithGoogle = () => {
         if (!auth) { log("Firebase Auth not initialized. Cannot sign in.", true); return; }
         const provider = new GoogleAuthProvider();
-        // Forces account selection to make switching easier
         provider.setCustomParameters({ prompt: 'select_account' });
         signInWithPopup(auth, provider).catch((error) => {
             log(`Google Sign-In Error: ${error.message}`, true);
@@ -576,13 +549,12 @@
             displayTransactionHistory();
         }, (error) => log(`Chain Listener Error: ${error.message}`, true));
 
-        // 2. Listen for Pending Transactions
-        onSnapshot(PENDING_TX_REF, (snapshot) => {
-            pendingSnapshotData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('pending-tx-count').textContent = pendingSnapshotData.length;
-            displayInvoices(pendingSnapshotData);
+        // 2. Listen for Pending Invoices (Requests)
+        onSnapshot(INVOICES_REF, (snapshot) => {
+            invoicesSnapshotData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            displayInvoices(invoicesSnapshotData);
             displayTransactionHistory();
-        }, (error) => log(`Pending Tx Listener Error: ${error.message}`, true));
+        }, (error) => log(`Invoice Listener Error: ${error.message}`, true));
         
         // 3. Listen for User Profiles
         onSnapshot(USER_PROFILES_REF, (snapshot) => {
@@ -593,7 +565,6 @@
     async function saveUserProfile(user) {
         if (db && user.uid) {
             try {
-                // Use setDoc to create or update the document with the UID as the ID
                 await setDoc(doc(USER_PROFILES_REF, user.uid), {
                     uid: user.uid,
                     displayName: user.displayName || 'Anonymous User',
@@ -626,7 +597,7 @@
             for (const tx of block.transactions) {
                 if (tx.fromAddress === walletAddress) {
                     // Deduct amount + fee
-                    balance -= tx.amount + (tx.fromAddress !== 'SYSTEM_REWARD' && tx.amount > 0 ? TX_FEE : 0);
+                    balance -= tx.amount + (tx.amount > 0 ? TX_FEE : 0);
                 }
                 if (tx.toAddress === walletAddress) {
                     balance += tx.amount;
@@ -647,74 +618,53 @@
     }
     
     // ====================================================================
-    // 5. BLOCKCHAIN FUNCTIONS (Mining, Sending, Requesting)
+    // 5. TRANSACTION FUNCTIONS (Instant Processing)
     // ====================================================================
 
-    window.mineBlock = async () => {
-        if (!isAuthReady) { showStatusMessage("Auth not ready.", 'error'); return; }
+    // This replaces the complex mineBlock function
+    async function processNewBlock(primaryTx, invoiceDocId = null) {
         const miner = getUID();
         
-        // Check if pending transactions exist
-        if (pendingSnapshotData.length === 0) {
-            showStatusMessage("No transactions to mine.", 'error');
-            return;
-        }
-        
-        document.getElementById('mine-btn').disabled = true;
-        document.getElementById('mine-status').style.display = 'block';
-        document.getElementById('mine-status').textContent = 'Mining in progress... This may take a moment.';
-
-        // --- 1. Get Pending Transactions and Calculate Fees ---
-        const transactionsToMine = pendingSnapshotData.map(doc => {
-            // Remove the Firestore ID before putting it in the block
-            const { id, ...data } = doc;
-            return data;
-        });
-
-        let totalFees = 0;
-        for (const tx of transactionsToMine) {
-            if (!tx.isRequest) {
-                totalFees += TX_FEE;
-            }
-        }
-
-        // --- 2. Create Mining Reward Transaction ---
-        const rewardTx = new Transaction('SYSTEM_REWARD', miner, MINING_REWARD + totalFees, `Block reward + ${totalFees.toFixed(2)} BVN in fees.`);
-        transactionsToMine.push(rewardTx);
-
-        // --- 3. Get Last Block Hash and Index ---
         const lastBlock = blocksData[blocksData.length - 1];
         const previousHash = lastBlock ? lastBlock.hash : '0';
         const nextIndex = lastBlock ? lastBlock.index + 1 : 0;
         
-        // --- 4. Create and Mine New Block (Proof-of-Work) ---
-        const newBlock = new Block(nextIndex, transactionsToMine, previousHash);
-        
-        // **Blocking Operation: PoW Calculation**
-        newBlock.mineBlock(MINING_DIFFICULTY);
-        
-        // --- 5. Batch Write to Firestore ---
+        const transactionsForBlock = [primaryTx];
+
+        // 1. Add Fee Transaction (This is the system's payment for block validation)
+        const feeTx = new Transaction(primaryTx.fromAddress, BURN_ADDRESS, TX_FEE, "Transaction Fee", false);
+        feeTx.amount = TX_FEE;
+        feeTx.fromAddress = primaryTx.fromAddress;
+        feeTx.toAddress = BURN_ADDRESS;
+        feeTx.message = `Network fee for Block ${nextIndex}`;
+        transactionsForBlock.push(feeTx);
+
+
+        // 2. Create Block and Hash (Instant)
+        const newBlock = new Block(nextIndex, transactionsForBlock, previousHash);
+        newBlock.mineBlock(); // Generates the hash instantly
+
+        // 3. Batch Write to Firestore
         const batch = writeBatch(db);
 
-        // A. Add the new block to the chain
+        // A. Add the new block (transaction) to the chain
         batch.set(doc(CHAIN_REF), { ...newBlock });
 
-        // B. Delete all pending transactions that were just mined
-        pendingSnapshotData.forEach(doc => {
-            batch.delete(doc(PENDING_TX_REF, doc.id));
-        });
+        // B. If this payment was for an invoice, delete the invoice document
+        if (invoiceDocId) {
+            batch.delete(doc(INVOICES_REF, invoiceDocId));
+        }
 
         try {
             await batch.commit();
-            showStatusMessage(`Block ${newBlock.index} mined successfully! Reward: ${rewardTx.amount.toFixed(2)} BVN.`, 'success');
+            showStatusMessage(`Payment processed instantly in Block #${newBlock.index}.`, 'success');
+            return true;
         } catch (e) {
-            showStatusMessage(`Error committing block: ${e.message}`, 'error');
-            console.error("Error mining block:", e);
-        } finally {
-            document.getElementById('mine-btn').disabled = false;
-            document.getElementById('mine-status').style.display = 'none';
+            showStatusMessage(`Error committing transaction block: ${e.message}`, 'error');
+            console.error("Error processing block:", e);
+            return false;
         }
-    };
+    }
 
 
     function validateTransactionInput(toAddress, amount, isSending) {
@@ -740,7 +690,7 @@
     }
 
     // --- Send Transaction / Submit Request ---
-    document.getElementById('tx-form').addEventListener('submit', (e) => {
+    document.getElementById('tx-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const toAddress = document.getElementById('recipient-id').value.trim();
@@ -752,8 +702,8 @@
 
         if (isRequestMode) {
             // Request: current user (fromAddress) is the recipient, they are requesting from (toAddress)
-            sender = toAddress; // The person being invoiced
-            recipient = fromAddress; // Current user
+            sender = toAddress; // The person being invoiced (the debtor)
+            recipient = fromAddress; // Current user (the creditor)
             txIsRequest = true;
         } else {
             // Send: current user is the sender
@@ -767,28 +717,47 @@
             showStatusMessage(error, 'error');
             return;
         }
-
-        const newTx = new Transaction(sender, recipient, amount, message, txIsRequest);
         
-        // Apply fee deduction message if sending
-        if (!txIsRequest) {
-            newTx.message = newTx.message ? `${newTx.message} (Fee: ${TX_FEE} BVN)` : `Payment (Fee: ${TX_FEE} BVN)`;
-        }
+        // Reset form inputs after validation
+        document.getElementById('recipient-id').value = '';
+        document.getElementById('amount').value = '1';
+        document.getElementById('message').value = '';
 
-        addDoc(PENDING_TX_REF, { ...newTx })
-            .then(() => {
-                showStatusMessage(txIsRequest ? "Invoice submitted successfully. Awaiting payment." : "Transaction submitted to mining pool.", 'success');
-                document.getElementById('recipient-id').value = '';
-                document.getElementById('amount').value = '1';
-                document.getElementById('message').value = '';
-            })
-            .catch(e => {
-                showStatusMessage(`Error submitting: ${e.message}`, 'error');
-                console.error("Error submitting transaction: ", e);
-            });
+
+        if (txIsRequest) {
+            // Submit to INVOICES_REF collection
+            const newInvoice = {
+                fromAddress: sender, // The person who OWES
+                toAddress: recipient, // The person who GETS PAID
+                amount: amount,
+                timestamp: Date.now(),
+                message: message,
+                isRequest: true
+            };
+
+            addDoc(INVOICES_REF, newInvoice)
+                .then(() => {
+                    showStatusMessage("Invoice submitted successfully. Awaiting payment.", 'success');
+                })
+                .catch(e => {
+                    showStatusMessage(`Error submitting invoice: ${e.message}`, 'error');
+                    console.error("Error submitting invoice: ", e);
+                });
+        } else {
+            // Process as an instant block creation
+            const newTx = new Transaction(sender, recipient, amount, message, txIsRequest);
+            
+            // Look up if this payment is for an existing invoice
+            const paidInvoice = invoicesSnapshotData.find(inv => 
+                inv.fromAddress === recipient && inv.toAddress === sender && inv.amount === amount
+            );
+            
+            const invoiceDocId = paidInvoice ? paidInvoice.id : null;
+            
+            await processNewBlock(newTx, invoiceDocId);
+        }
     });
 
-    // FIX 2: Correctly reference the toggle button using its new ID
     window.toggleRequestMode = () => {
         isRequestMode = !isRequestMode;
         const header = document.getElementById('tx-header');
@@ -812,14 +781,18 @@
         }
     };
     
-    window.payInvoice = (sender, amount) => {
+    window.payInvoice = (sender, amount, invoiceDocId) => {
         // Switch to send mode and populate the form
         if (isRequestMode) {
             window.toggleRequestMode();
         }
         document.getElementById('recipient-id').value = sender;
         document.getElementById('amount').value = amount;
-        showStatusMessage(`Form populated to pay ${amount} BVN to ${sender.substring(0, 8)}...`, 'success');
+        
+        // We can optionally store the invoice ID on the button to be submitted, 
+        // but for simplicity, we rely on the instant processing logic to auto-detect/delete.
+        // For a single-file implementation, we keep it simple: populate the form and let the user click submit.
+        showStatusMessage(`Form populated to pay ${amount} BVN to ${sender.substring(0, 8)}... Please click 'Submit Payment'.`, 'success');
     };
 
     // ====================================================================
@@ -829,39 +802,29 @@
     function displayChain(blocks) {
         const output = document.getElementById('chain-output');
         if (blocks.length === 0) {
-            output.innerHTML = '<p>The blockchain is empty. Mine the first (Genesis) block!</p>';
+            output.innerHTML = '<p>The ledger is empty. Make the first transaction (Block #0)!</p>';
             return;
         }
         output.innerHTML = '';
         document.getElementById('chain-length').textContent = blocks.length;
 
         blocks.forEach(block => {
-            let totalFeesCollected = 0;
+            const primaryTx = block.transactions.find(tx => tx.toAddress !== BURN_ADDRESS);
+            const feeTx = block.transactions.find(tx => tx.toAddress === BURN_ADDRESS);
+            const totalFeesCollected = feeTx ? feeTx.amount : 0;
+            
             const txList = block.transactions.map(tx => {
                 let txClass = '';
                 let txType = '';
                 let txDisplay = '';
 
-                if (tx.fromAddress === 'SYSTEM_REWARD' && tx.toAddress !== BURN_ADDRESS) {
-                    txType = 'REWARD';
-                    txClass = 'tx-type-reward';
-                    txDisplay = `Miner Reward: ${tx.amount.toFixed(2)} BVN`;
-                } else if (tx.toAddress === BURN_ADDRESS) {
-                    txType = 'BURN';
+                if (tx.toAddress === BURN_ADDRESS) {
+                    txType = 'FEE/BURN';
                     txClass = 'tx-type-burn';
-                    txDisplay = `Burned ${tx.amount.toFixed(2)} BVN`;
-                } else if (tx.isRequest) {
-                    txType = 'REQUEST (Pending)';
-                    txClass = 'tx-type-request';
-                    txDisplay = `Request: ${tx.amount.toFixed(2)} BVN`;
-                }
-                 else {
-                    // Regular transaction
-                    if (!tx.isRequest) {
-                         totalFeesCollected += TX_FEE;
-                    }
-                    txType = 'Payment';
-                    txDisplay = `Send: ${tx.amount.toFixed(2)} BVN`;
+                    txDisplay = `Burned ${tx.amount.toFixed(2)} BVN (Fee)`;
+                } else {
+                    txType = 'PAYMENT';
+                    txDisplay = `Sent: ${tx.amount.toFixed(2)} BVN`;
                 }
 
                 return `<li><span class="${txClass}">${txType}</span> | ${txDisplay} | From: ${tx.fromAddress.substring(0, 8)}... | To: ${tx.toAddress.substring(0, 8)}... | Msg: ${tx.message || 'N/A'}</li>`;
@@ -869,13 +832,14 @@
             
             const blockHtml = `
                 <div class="block-card">
-                    <div class="block-header">Block #${block.index} (T: ${new Date(block.timestamp).toLocaleTimeString()})</div>
-                    <p>Fees: <span class="tx-type-reward">${totalFeesCollected.toFixed(2)} BVN</span></p>
+                    <div class="block-header">Block/Tx #${block.index} (T: ${new Date(block.timestamp).toLocaleTimeString()})</div>
+                    <p>Primary Tx: ${primaryTx ? `${primaryTx.fromAddress.substring(0, 8)}... $\\rightarrow$ ${primaryTx.toAddress.substring(0, 8)}... (${primaryTx.amount.toFixed(2)} BVN)` : 'N/A'}</p>
+                    <p>Fee Paid: <span class="tx-type-burn">${totalFeesCollected.toFixed(2)} BVN</span></p>
                     <p>Hash: <code>${block.hash.substring(0, 20)}...</code></p>
                     <p>Prev Hash: <code>${block.previousHash.substring(0, 20)}...</code></p>
                     <div class="tx-list">
                         <details>
-                            <summary>Transactions (${block.transactions.length})</summary>
+                            <summary>Details (${block.transactions.length})</summary>
                             <ul>${txList}</ul>
                         </details>
                     </div>
@@ -887,16 +851,16 @@
 
     function checkChainValidity(chain) {
         let isValid = true;
+        // Simplified validity check: only checking links, not PoW
         for (let i = 1; i < chain.length; i++) {
             const currentBlock = chain[i];
             const previousBlock = chain[i - 1];
             
-            // Re-calculate hash to ensure integrity
+            // 1. Check if the block's hash is correct (re-calculate)
             const testBlock = new Block(currentBlock.index, currentBlock.transactions, currentBlock.previousHash);
-            testBlock.nonce = currentBlock.nonce; // Set nonce from stored block
+            testBlock.nonce = currentBlock.nonce;
             const calculatedHash = testBlock.calculateHash();
 
-            // 1. Check if the block's stored hash is correct
             if (currentBlock.hash !== calculatedHash) {
                 log(`Chain Invalid: Block #${currentBlock.index} hash mismatch.`, true);
                 isValid = false;
@@ -952,25 +916,26 @@
         showStatusMessage(`Copied user ID: ${id.substring(0, 8)}...`, 'success');
     };
 
-    function displayInvoices(pendingTxs) {
+    function displayInvoices(invoices) {
         const output = document.getElementById('invoices-output');
         const myUid = getUID();
         
-        const myInvoices = pendingTxs.filter(tx => tx.isRequest && tx.toAddress === myUid);
+        // Filter for invoices where I am the DEBTOR (fromAddress)
+        const invoicesToPay = invoices.filter(tx => tx.fromAddress === myUid);
         output.innerHTML = '';
 
-        if (myInvoices.length === 0) {
+        if (invoicesToPay.length === 0) {
             output.innerHTML = '<p>No pending invoices sent to you.</p>';
             return;
         }
 
-        myInvoices.forEach(tx => {
+        invoicesToPay.forEach(tx => {
             const invoiceHtml = `
                 <div class="tx-history-item" style="border-left: 5px solid #f97316;">
-                    <p><span class="tx-type-request">INVOICE</span> from <strong>${tx.fromAddress.substring(0, 8)}...</strong></p>
+                    <p><span class="tx-type-request">INVOICE</span> from <strong>${tx.toAddress.substring(0, 8)}...</strong></p>
                     <p>Amount Due: <strong>${tx.amount.toFixed(2)} BVN</strong></p>
                     <p>Reason: ${tx.message || 'N/A'}</p>
-                    <button onclick="window.payInvoice('${tx.fromAddress}', ${tx.amount})" style="background-color: var(--color-burn); padding: 5px 10px; margin-top: 10px;">
+                    <button onclick="window.payInvoice('${tx.toAddress}', ${tx.amount}, '${tx.id}')" style="background-color: var(--color-burn); padding: 5px 10px; margin-top: 10px;">
                         Pay Invoice
                     </button>
                 </div>
@@ -986,19 +951,28 @@
         
         const allActivity = [];
 
-        // 1. Mined Transactions (from blocks)
+        // 1. Transactions from blocks
         blocksData.forEach(block => {
-            block.transactions.forEach(tx => {
-                if (tx.fromAddress === myUid || tx.toAddress === myUid) {
-                    allActivity.push({ ...tx, type: 'MINED', blockIndex: block.index, timestamp: block.timestamp });
+            // Find the primary transaction, ignoring the fee
+            const primaryTx = block.transactions.find(tx => tx.toAddress !== BURN_ADDRESS);
+            if (primaryTx && (primaryTx.fromAddress === myUid || primaryTx.toAddress === myUid)) {
+                // Add the primary transaction details
+                allActivity.push({ ...primaryTx, type: 'CLEARED', blockIndex: block.index, timestamp: block.timestamp });
+
+                // Also add the fee if it was deducted from this user
+                if (primaryTx.fromAddress === myUid && primaryTx.toAddress !== BURN_ADDRESS) {
+                    const feeTx = block.transactions.find(tx => tx.toAddress === BURN_ADDRESS);
+                    if (feeTx) {
+                        allActivity.push({ ...feeTx, type: 'FEE', blockIndex: block.index, timestamp: block.timestamp });
+                    }
                 }
-            });
+            }
         });
 
-        // 2. Pending Transactions/Requests
-        pendingSnapshotData.forEach(tx => {
+        // 2. Pending Invoices (only requests where I am the creditor or debtor)
+        invoicesSnapshotData.forEach(tx => {
              if (tx.fromAddress === myUid || tx.toAddress === myUid) {
-                 allActivity.push({ ...tx, type: 'PENDING', timestamp: tx.timestamp });
+                 allActivity.push({ ...tx, type: 'REQUEST', timestamp: tx.timestamp });
             }
         });
 
@@ -1013,37 +987,33 @@
         output.innerHTML = allActivity.map(item => {
             let label, status, amountDisplay, color;
             
-            if (item.type === 'MINED') {
-                status = `MINED (Block #${item.blockIndex})`;
+            if (item.type === 'CLEARED') {
+                status = `CLEARED (Block #${item.blockIndex})`;
                 color = '#059669'; // Green
                 
-                if (item.fromAddress === 'SYSTEM_REWARD' && item.toAddress === myUid) {
-                    label = 'MINED REWARD';
-                    amountDisplay = `+${item.amount.toFixed(2)} BVN (Miner)`;
-                } else if (item.fromAddress === myUid) {
+                if (item.fromAddress === myUid) {
                     label = item.toAddress === BURN_ADDRESS ? 'SENT (BURN)' : 'SENT';
-                    amountDisplay = `-${(item.amount + TX_FEE).toFixed(2)} BVN`;
+                    amountDisplay = `-${item.amount.toFixed(2)} BVN`;
                 } else if (item.toAddress === myUid) {
                     label = 'RECEIVED';
                     amountDisplay = `+${item.amount.toFixed(2)} BVN`;
                 }
-            } else { // PENDING
-                status = 'PENDING';
-                color = '#f59e0b'; // Amber
+            } else if (item.type === 'FEE') {
+                status = `SYSTEM FEE (Block #${item.blockIndex})`;
+                color = '#ef4444'; // Red
+                label = 'NETWORK FEE';
+                amountDisplay = `-${item.amount.toFixed(2)} BVN`;
+            } else { // REQUEST
+                status = 'PENDING INVOICE';
+                color = '#f97316'; // Orange
                 
-                if (item.isRequest && item.toAddress === myUid) {
-                    label = 'INVOICE RECEIVED';
-                    amountDisplay = `Due: ${item.amount.toFixed(2)} BVN`;
-                    color = '#f97316'; // Orange
-                } else if (item.isRequest && item.fromAddress === myUid) {
+                if (item.toAddress === myUid) { // I am the creditor (requested money)
                     label = 'INVOICE SENT';
                     amountDisplay = `Request: ${item.amount.toFixed(2)} BVN`;
-                } else if (item.fromAddress === myUid) {
-                    label = 'SENT (Pending)';
-                    amountDisplay = `-${(item.amount + TX_FEE).toFixed(2)} BVN`;
-                } else if (item.toAddress === myUid) {
-                    label = 'RECEIVED (Pending)';
-                    amountDisplay = `+${item.amount.toFixed(2)} BVN`;
+                } else if (item.fromAddress === myUid) { // I am the debtor (received invoice)
+                    label = 'INVOICE RECEIVED';
+                    amountDisplay = `Due: ${item.amount.toFixed(2)} BVN`;
+                    color = '#f59e0b'; // Amber
                 }
             }
             
