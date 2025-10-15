@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen Instant System</title>
+    <title>BitVen-Forca</title>
     <style>
         :root {
             --color-primary: #3b82f6;
@@ -121,43 +121,25 @@
         const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
         const EXCHANGE_RATE_NGN = 1800.00; // 1 BVN = 1800 NGN
 
+        // --- FIREBASE CONFIGURATION ---
+        // The __app_id and __initial_auth_token are provided by the hosting environment.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
         
-        let app = null;
-        let db = null;
-        let auth = null;
-        let firebaseConfig = {};
-
-        // 1. Try to load config from the environment
-        try {
-            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        } catch(e) {
-            console.error("Error parsing __firebase_config:", e);
-        }
-
-        // 2. Fallback check: If the config is missing or invalid, use a placeholder
-        if (!firebaseConfig || !firebaseConfig.projectId) {
-            console.warn("Firebase config is missing Project ID. Using placeholder config for initialization.");
-            // --- PLACEHOLDER CONFIG (REPLACE THIS WITH YOUR ACTUAL FIREBASE CONFIG) ---
-            firebaseConfig = {
-                apiKey: "YOUR_ACTUAL_API_KEY",
-                authDomain: "your-project-id.firebaseapp.com",
-                projectId: "bitven-placeholder-id", // Placeholder to pass the check
-                storageBucket: "your-project-id.appspot.com",
-                messagingSenderId: "123456789012",
-                appId: "1:123456789012:web:abcdef1234567890abcdef"
-            };
-            // --- END PLACEHOLDER CONFIG ---
-        }
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
+            authDomain: "bitven-6d42c.firebaseapp.com",
+            projectId: "bitven-6d42c",
+            storageBucket: "bitven-6d42c.firebasestorage.app",
+            messagingSenderId: "511584242303",
+            appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
+        };
         
-        // 3. Initialize Firebase if we now have a projectId
-        if (firebaseConfig.projectId) {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-        }
-
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
         let userId = null;
         let isAdmin = false;
         let profiles = {};
@@ -165,7 +147,6 @@
         let balanceBVN = 0;
 
         const path = (collectionName, docId) => {
-            if (!db) return null; // Should be handled by parent logic, but good practice
             return docId ? 
                 doc(db, 'artifacts', appId, 'public', 'data', collectionName, docId) : 
                 collection(db, 'artifacts', appId, 'public', 'data', collectionName);
@@ -350,7 +331,6 @@
         // --- Core Logic ---
 
         const saveUserProfile = async (uid, email, displayName, userIsAdmin) => {
-            if (!db) return; 
             const profileRef = path('user_profiles_v2', uid);
             try {
                 await setDoc(profileRef, {
@@ -366,7 +346,6 @@
         };
 
         const authenticate = async () => {
-            if (!auth) return; 
             try {
                 log('Attempting authentication...');
                 if (initialAuthToken) {
@@ -398,6 +377,7 @@
                 userId = user.uid;
                 const email = user.email || 'Anonymous';
                 
+                // Check if the current user is the defined admin
                 const userIsAdmin = email === ADMIN_EMAIL;
                 isAdmin = userIsAdmin;
 
@@ -442,7 +422,6 @@
         };
 
         const sendBitVen = async (recipientId, amount) => {
-            if (!db) return displayMessage('System not initialized. Cannot perform transaction. Check Firebase configuration.', 'error');
             const FEE_AMOUNT = 0.01;
             const totalDebit = parseFloat(amount) + FEE_AMOUNT;
             const amountFloat = parseFloat(amount);
@@ -488,8 +467,6 @@
         };
 
         const issueBitVen = async (recipientId, amount) => {
-            if (!db) return displayMessage('System not initialized. Cannot perform issuance. Check Firebase configuration.', 'error');
-
             if (!isAdmin) {
                 displayMessage('Only administrators can issue new BVN.', 'error');
                 return;
@@ -522,8 +499,6 @@
         // --- Firebase Listeners ---
 
         const startListeners = () => {
-            if (!db) return;
-
             // 1. Profile Listener
             onSnapshot(path('user_profiles_v2'), (snapshot) => {
                 profiles = {};
@@ -565,21 +540,7 @@
         // --- Initial Setup ---
 
         const initializeBitVen = () => {
-            const signInButton = document.getElementById('sign-in-button');
-            
-            // Check 1: If Firebase failed to initialize (invalid config)
-            if (!auth || !db) {
-                document.getElementById('status-message').innerHTML = '<span style="color:red; font-weight:bold;">Firebase Not Connected! Replace the placeholder config with your actual Firebase config to enable sign-in and features.</span>';
-                
-                if(signInButton) {
-                    signInButton.disabled = true;
-                    signInButton.textContent = "Config Error";
-                    signInButton.style.backgroundColor = 'gray';
-                }
-                return;
-            }
-
-            // Check 2: All good, proceed with Auth flow
+            // All good, proceed with Auth flow
             onAuthStateChanged(auth, handleAuthChange);
             authenticate();
 
