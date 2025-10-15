@@ -3,24 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen Instant System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>BitVen-Forca</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f7f7; }
-        .card { background-color: white; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
-        .admin-tag { background-color: #EF4444; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
-        .success { color: #10B981; }
-        .danger { color: #EF4444; }
-        .scrollable-content { max-height: 400px; overflow-y: auto; }
-        /* Simple Modal Backdrop */
+        :root {
+            --color-primary: #3b82f6;
+            --color-secondary: #10b981;
+            --color-danger: #ef4444;
+            --color-text-dark: #1f2937;
+            --color-text-light: #6b7280;
+            --color-bg-light: #f9fafb;
+            --color-bg-white: white;
+            --border-radius-lg: 1rem;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--color-bg-light); 
+            padding: 2.5rem; 
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .card { 
+            background-color: var(--color-bg-white); 
+            border-radius: var(--border-radius-lg); 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
+            padding: 24px;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        @media (min-width: 1024px) {
+            .grid-layout {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        .admin-tag { 
+            background-color: var(--color-danger); 
+            color: white; 
+            padding: 0.25rem 0.75rem; 
+            border-radius: 9999px; 
+            font-size: 0.75rem; 
+            font-weight: bold; 
+            display: inline-block;
+        }
+        
+        .success { color: var(--color-secondary); }
+        .danger { color: var(--color-danger); }
+        
+        .scrollable-content { 
+            max-height: 400px; 
+            overflow-y: auto; 
+        }
+
+        /* Form and Button Styling */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--color-text-dark); margin-bottom: 0.25rem; }
+        .form-input { 
+            display: block; 
+            width: 100%; 
+            padding: 0.5rem; 
+            border: 1px solid #d1d5db; 
+            border-radius: 0.375rem; 
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            margin-top: 0.25rem;
+        }
+        
+        .button { 
+            width: 100%; 
+            padding: 0.75rem; 
+            border-radius: 0.5rem; 
+            font-weight: 600; 
+            color: white; 
+            cursor: pointer; 
+            transition: background-color 0.3s;
+            border: none;
+        }
+
+        .button-primary { background-color: var(--color-secondary); }
+        .button-primary:hover:enabled { background-color: #059669; }
+        .button-danger { background-color: var(--color-danger); }
+        .button-danger:hover:enabled { background-color: #dc2626; }
+        .button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Modal Styling */
         .modal-backdrop {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background-color: rgba(0, 0, 0, 0.6); display: flex; 
             justify-content: center; align-items: center; z-index: 50; 
         }
+        .modal-card { width: 90%; max-width: 400px; }
+
+        /* Table Styling */
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 10px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+        .table th { background-color: #f9fafb; font-size: 0.75rem; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 0.05em; position: sticky; top: 0; }
+        .table tr:hover { background-color: #f9fafb; }
+        .text-truncate { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 150px; }
     </style>
 </head>
-<body class="p-4 sm:p-6 md:p-10">
+<body>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -30,16 +119,32 @@
 
         // REQUIRED ADMIN IDENTITY
         const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
-        const EXCHANGE_RATE_NGN = 1800.00; // 1 BVN = 1800 NGN
+        const EXCHANGE_RATE_NGN = 1000.00; // 1 BVN = 1800 NGN
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
+        
+        let app = null;
+        let db = null;
+        let auth = null;
+        let firebaseConfig = {};
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        try {
+            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        } catch(e) {
+            console.error("Error parsing __firebase_config:", e);
+        }
 
+        if (!firebaseConfig || !firebaseConfig.projectId) {
+            // The logic to handle the error when the DOM is ready will be in initializeBitVen
+            console.error("Firebase initialization aborted due to missing project ID.");
+        } else {
+            // Initialize Firebase only if config is valid
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        }
+        
         let userId = null;
         let isAdmin = false;
         let profiles = {};
@@ -51,15 +156,22 @@
             doc(db, 'artifacts', appId, 'public', 'data', collectionName, docId) : 
             collection(db, 'artifacts', appId, 'public', 'data', collectionName);
 
-        const profilesCollection = path('user_profiles_v2');
-        const transactionsCollection = path('ledger_transactions_v3');
-        const invoicesCollection = path('invoices_v2');
+        // These variables can only be defined if db is defined, otherwise they will fail
+        // Since db is conditionally defined, we handle the checks in the listener functions
+        const profilesCollection = () => path('user_profiles_v2');
+        const transactionsCollection = () => path('ledger_transactions_v3');
+        const invoicesCollection = () => path('invoices_v2');
+
 
         const log = (message, type = 'log') => {
             const statusElement = document.getElementById('status-message');
             if (statusElement) {
                 statusElement.textContent = message;
                 statusElement.className = `p-3 rounded-lg text-sm mb-4 ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+                statusElement.style.backgroundColor = type === 'error' ? '#fee2e2' : '#d1fae5';
+                statusElement.style.color = type === 'error' ? '#b91c1c' : '#065f46';
+                statusElement.style.borderRadius = '0.5rem';
+                statusElement.style.marginBottom = '1rem';
             }
             console.log(message);
         };
@@ -68,10 +180,10 @@
             const modal = document.createElement('div');
             modal.className = 'modal-backdrop';
             modal.innerHTML = `
-                <div class="card p-6 w-11/12 max-w-sm">
-                    <h3 class="text-xl font-bold mb-4">${type === 'error' ? 'Error' : 'Notification'}</h3>
-                    <p class="text-gray-600">${text}</p>
-                    <button id="closeModal" class="mt-6 w-full py-2 rounded-md font-semibold text-white ${type === 'error' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}">Close</button>
+                <div class="card modal-card p-6">
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">${type === 'error' ? 'Error' : 'Notification'}</h3>
+                    <p style="color: var(--color-text-light);">${text}</p>
+                    <button id="closeModal" class="button mt-6" style="background-color: ${type === 'error' ? 'var(--color-danger)' : 'var(--color-primary)'};">Close</button>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -133,7 +245,6 @@
                 balanceStatusEl.classList.toggle('danger', balanceBVN < 0 && !isAdmin);
             }
 
-            // Admin can always send, standard user needs non-zero balance
             if (sendButton) sendButton.disabled = !isAdmin && balanceBVN <= 0;
             if (issueButton) issueButton.disabled = !isAdmin;
 
@@ -180,12 +291,12 @@
                 }
 
                 const row = document.createElement('tr');
-                row.className = 'border-b hover:bg-gray-50';
+                row.className = 'border-b';
                 row.innerHTML = `
-                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium ${styleClass}">${icon} ${direction}</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm ${styleClass}">${amountText} BVN</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-500">${new Date(tx.timestamp).toLocaleString()}</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-400 truncate max-w-[100px]">${tx.sender} / ${tx.recipient}</td>
+                    <td class="table-cell" style="font-weight: 500;" class="${styleClass}">${icon} ${direction}</td>
+                    <td class="table-cell ${styleClass}">${amountText} BVN</td>
+                    <td class="table-cell" style="font-size: 0.75rem; color: var(--color-text-light);">${new Date(tx.timestamp).toLocaleString()}</td>
+                    <td class="table-cell text-truncate" style="font-size: 0.75rem; color: #9ca3af;">${tx.sender} / ${tx.recipient}</td>
                 `;
                 historyBody.appendChild(row);
             });
@@ -197,14 +308,18 @@
 
             directoryBody.innerHTML = '';
             
-            // Use Object.values(profiles) which contains all loaded user data
-            Object.values(profiles).filter(p => p.email).forEach(profile => {
+            // Only list actual users with emails (or a valid UID in the map, filtering out the email index)
+            const uniqueProfiles = Object.values(profiles).filter((value, index, self) => 
+                index === self.findIndex((t) => (t.uid === value.uid)) && value.email
+            );
+
+            uniqueProfiles.forEach(profile => {
                 const row = document.createElement('tr');
-                row.className = 'border-b hover:bg-gray-50';
+                row.className = 'border-b';
                 row.innerHTML = `
-                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${profile.email}</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">${profile.uid}</td>
-                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${profile.isAdmin ? '<span class="admin-tag !bg-green-600">ADMIN</span>' : 'User'}</td>
+                    <td class="table-cell" style="font-weight: 500;">${profile.email}</td>
+                    <td class="table-cell text-truncate">${profile.uid}</td>
+                    <td class="table-cell">${profile.isAdmin ? '<span class="admin-tag" style="background-color: var(--color-secondary);">ADMIN</span>' : 'User'}</td>
                 `;
                 directoryBody.appendChild(row);
             });
@@ -213,6 +328,7 @@
         // --- Core Logic ---
 
         const saveUserProfile = async (uid, email, displayName, userIsAdmin) => {
+            if (!db) return; // Guard against uninitialized database
             const profileRef = path('user_profiles_v2', uid);
             try {
                 await setDoc(profileRef, {
@@ -223,11 +339,12 @@
                     lastSeen: Date.now(),
                 }, { merge: true });
             } catch (error) {
-                log('Failed to save profile: ' + error.message, 'error');
+                log('Failed to save profile (Check Security Rules): ' + error.message, 'error');
             }
         };
 
         const authenticate = async () => {
+            if (!auth) return; // Guard against uninitialized auth
             try {
                 log('Attempting authentication...');
                 if (initialAuthToken) {
@@ -265,23 +382,19 @@
                 await saveUserProfile(user.uid, email, user.displayName || 'Unknown User', isAdmin);
 
                 authStatusEl.textContent = 'Authenticated';
-                authStatusEl.className = 'text-green-600 font-bold';
+                authStatusEl.style.color = 'var(--color-secondary)';
+                authStatusEl.style.fontWeight = 'bold';
                 
                 authDetailsEl.innerHTML = `
-                    <p class="text-xs text-gray-500">UID: <span class="font-mono">${user.uid}</span></p>
-                    <p class="text-xs text-gray-500">Email: ${email} ${isAdmin ? '<span class="admin-tag">ADMIN</span>' : ''}</p>
+                    <p style="font-size: 0.75rem; color: var(--color-text-light);">UID: <span style="font-family: monospace;">${user.uid}</span></p>
+                    <p style="font-size: 0.75rem; color: var(--color-text-light);">Email: ${email} ${isAdmin ? '<span class="admin-tag" style="background-color: var(--color-primary);">ADMIN</span>' : ''}</p>
                 `;
                 
-                signInButton.classList.add('hidden');
-                signOutButton.classList.remove('hidden');
+                signInButton.style.display = 'none';
+                signOutButton.style.display = 'inline-block';
 
-                // Conditional display of Admin Card
                 if (adminIssueCard) {
-                    if (isAdmin) {
-                        adminIssueCard.classList.remove('hidden');
-                    } else {
-                        adminIssueCard.classList.add('hidden');
-                    }
+                    adminIssueCard.style.display = isAdmin ? 'block' : 'none';
                 }
 
                 startListeners();
@@ -291,13 +404,13 @@
                 userId = null;
                 isAdmin = false;
                 authStatusEl.textContent = 'Signed Out';
-                authStatusEl.className = 'text-red-600 font-bold';
-                authDetailsEl.innerHTML = '<p class="text-sm text-gray-500">Please sign in to view and transact.</p>';
+                authStatusEl.style.color = 'var(--color-danger)';
+                authDetailsEl.innerHTML = '<p style="font-size: 0.875rem; color: var(--color-text-light);">Please sign in to view and transact.</p>';
                 
-                signInButton.classList.remove('hidden');
-                signOutButton.classList.add('hidden');
+                signInButton.style.display = 'inline-block';
+                signOutButton.style.display = 'none';
 
-                if (adminIssueCard) adminIssueCard.classList.add('hidden');
+                if (adminIssueCard) adminIssueCard.style.display = 'none';
 
                 profiles = {};
                 transactions = [];
@@ -307,6 +420,7 @@
         };
 
         const sendBitVen = async (recipientId, amount) => {
+            if (!db) return displayMessage('System not initialized. Cannot perform transaction.', 'error');
             const FEE_AMOUNT = 0.01;
             const totalDebit = parseFloat(amount) + FEE_AMOUNT;
             const amountFloat = parseFloat(amount);
@@ -321,7 +435,6 @@
                 return;
             }
             
-            // ADMIN Privilege: Skip balance check
             if (!isAdmin && balanceBVN < totalDebit) {
                 displayMessage(`Insufficient balance. Requires ${totalDebit.toFixed(2)} BVN (including 0.01 BVN fee). Current: ${balanceBVN.toFixed(2)} BVN`, 'error');
                 return;
@@ -353,6 +466,8 @@
         };
 
         const issueBitVen = async (recipientId, amount) => {
+            if (!db) return displayMessage('System not initialized. Cannot perform issuance.', 'error');
+
             if (!isAdmin) {
                 displayMessage('Only administrators can issue new BVN.', 'error');
                 return;
@@ -385,14 +500,16 @@
         // --- Firebase Listeners ---
 
         const startListeners = () => {
+            if (!db) return; // Guard against uninitialized database
+
             // 1. Profile Listener
-            onSnapshot(profilesCollection, (snapshot) => {
+            onSnapshot(profilesCollection(), (snapshot) => {
                 profiles = {};
                 snapshot.forEach(doc => {
                     const profile = doc.data();
                     profiles[profile.uid] = profile;
                     if (profile.email) {
-                        profiles[profile.email] = profile; // Index by email for lookups
+                        profiles[profile.email] = profile; 
                     }
                 });
                 log('User profiles snapshot received.');
@@ -403,7 +520,7 @@
             });
 
             // 2. Transaction Log Listener
-            onSnapshot(transactionsCollection, (snapshot) => {
+            onSnapshot(transactionsCollection(), (snapshot) => {
                 transactions = [];
                 snapshot.forEach(doc => {
                     transactions.push(doc.data());
@@ -416,7 +533,7 @@
             });
 
             // 3. Invoices Listener (Placeholder)
-            onSnapshot(invoicesCollection, (snapshot) => {
+            onSnapshot(invoicesCollection(), (snapshot) => {
                 log('Invoices snapshot received.');
             }, (error) => {
                 log('Error listening to invoices: ' + error.message, 'error');
@@ -426,6 +543,20 @@
         // --- Initial Setup ---
 
         const initializeBitVen = () => {
+            // Check 1: If Firebase failed to initialize (invalid config)
+            if (!auth || !db) {
+                const signInButton = document.getElementById('sign-in-button');
+                document.getElementById('status-message').innerHTML = '<span style="color:red; font-weight:bold;">Firebase Error: Project ID not configured. Sign-in disabled.</span>';
+                
+                if(signInButton) {
+                    signInButton.disabled = true;
+                    signInButton.textContent = "Config Error";
+                    signInButton.style.backgroundColor = 'gray';
+                }
+                return; // Safe return inside a function
+            }
+
+            // Check 2: All good, proceed with Auth flow
             onAuthStateChanged(auth, handleAuthChange);
             authenticate();
 
@@ -459,86 +590,87 @@
         };
 
         window.onload = initializeBitVen;
+
     </script>
 
-    <div class="max-w-7xl mx-auto p-4">
-        <header class="mb-8">
-            <h1 class="text-4xl font-extrabold text-gray-900 flex items-center">
-                <span role="img" aria-label="Ven">💰</span> BitVen System
+    <div class="container" style="padding: 1rem;">
+        <header style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--color-text-dark); display: flex; align-items: center;">
+                <span role="img" aria-label="Ven" style="margin-right: 0.5rem;">💰</span> BitVen System
             </h1>
-            <p class="text-gray-500 mt-1">Instant, Transparent, Digital Transactions</p>
+            <p style="color: var(--color-text-light); margin-top: 0.25rem;">Instant, Transparent, Digital Transactions</p>
         </header>
 
-        <div id="status-message" class="p-3 rounded-lg text-sm mb-4 bg-blue-100 text-blue-700">Initializing...</div>
+        <div id="status-message" style="padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; margin-bottom: 1rem; background-color: #dbeafe; color: #1e40af;">Initializing...</div>
 
         <!-- Auth Status & Sign-In -->
-        <div class="card p-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div class="card" style="margin-bottom: 2rem; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
             <div>
-                <h2 class="text-lg font-semibold text-gray-900">Authentication Status</h2>
-                <p id="auth-status" class="text-red-600 font-bold">Signed Out</p>
-                <div id="auth-details" class="mt-2">
-                    <p class="text-sm text-gray-500">Please sign in to view and transact.</p>
+                <h2 style="font-size: 1.125rem; font-weight: 600; color: var(--color-text-dark);">Authentication Status</h2>
+                <p id="auth-status" class="danger" style="font-weight: bold;">Signed Out</p>
+                <div id="auth-details" style="margin-top: 0.5rem;">
+                    <p style="font-size: 0.875rem; color: var(--color-text-light);">Please sign in to view and transact.</p>
                 </div>
             </div>
-            <div class="mt-4 sm:mt-0">
-                <button id="sign-in-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Sign In with Google</button>
-                <button id="sign-out-button" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors hidden">Sign Out</button>
+            <div style="margin-top: 1rem; width: 100%; max-width: 200px;">
+                <button id="sign-in-button" class="button" style="background-color: var(--color-primary);">Sign In with Google</button>
+                <button id="sign-out-button" class="button button-danger" style="display: none;">Sign Out</button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid-layout">
             
             <!-- Left Column: Wallet & Transactions -->
-            <div class="lg:col-span-2">
+            <div style="grid-column: span 1 / span 1;">
 
                 <!-- Wallet Card -->
-                <div class="card p-6 mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Your BitVen Wallet</h2>
-                    <div class="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
-                        <div class="mb-3 sm:mb-0">
-                            <p class="text-sm text-gray-500">Balance (BVN)</p>
-                            <h3 id="balance-bvn" class="text-4xl font-extrabold text-gray-900">0.00</h3>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.5rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Your BitVen Wallet</h2>
+                    <div style="display: flex; flex-direction: column; justify-content: space-between; align-items: center; background-color: var(--color-bg-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--color-primary);">
+                        <div style="margin-bottom: 0.75rem;">
+                            <p style="font-size: 0.875rem; color: var(--color-text-light);">Balance (BVN)</p>
+                            <h3 id="balance-bvn" style="font-size: 2.25rem; font-weight: 800; color: var(--color-text-dark);">0.00</h3>
                         </div>
-                        <div class="text-right">
-                            <p class="text-sm text-gray-500">Approximate Value (NGN)</p>
-                            <h3 id="balance-ngn" class="text-2xl font-bold text-gray-700">₦0.00</h3>
-                            <p id="balance-status" class="text-sm mt-1 success">STATUS: Solvent</p>
+                        <div style="text-align: right; width: 100%;">
+                            <p style="font-size: 0.875rem; color: var(--color-text-light);">Approximate Value (NGN)</p>
+                            <h3 id="balance-ngn" style="font-size: 1.5rem; font-weight: bold; color: var(--color-text-dark);">₦0.00</h3>
+                            <p id="balance-status" class="success" style="font-size: 0.875rem; margin-top: 0.25rem;">STATUS: Solvent</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Send Form -->
-                <div class="card p-6 mb-8">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">Send BitVen (P2P)</h2>
-                    <form id="send-bvn-form" class="space-y-4">
-                        <div>
-                            <label for="recipient-id" class="block text-sm font-medium text-gray-700">Recipient Email or UID</label>
-                            <input type="text" id="recipient-id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="user@example.com or UID">
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Send BitVen (P2P)</h2>
+                    <form id="send-bvn-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="recipient-id" class="form-label">Recipient Email or UID</label>
+                            <input type="text" id="recipient-id" required class="form-input" placeholder="user@example.com or UID">
                         </div>
-                        <div>
-                            <label for="send-amount" class="block text-sm font-medium text-gray-700">Amount (BVN)</label>
-                            <input type="number" step="0.01" min="0.01" id="send-amount" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="e.g., 1.50">
-                            <p class="text-xs text-gray-500 mt-1">Note: A 0.01 BVN network fee applies to all P2P transactions.</p>
+                        <div class="form-group">
+                            <label for="send-amount" class="form-label">Amount (BVN)</label>
+                            <input type="number" step="0.01" min="0.01" id="send-amount" required class="form-input" placeholder="e.g., 1.50">
+                            <p style="font-size: 0.75rem; color: var(--color-text-light); margin-top: 0.25rem;">Note: A 0.01 BVN network fee applies to all P2P transactions.</p>
                         </div>
-                        <button type="submit" id="send-bvn-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors" disabled>
+                        <button type="submit" id="send-bvn-button" class="button button-primary" disabled>
                             Send BVN
                         </button>
                     </form>
                 </div>
 
                 <!-- Admin Issue Form (Hidden by default, shown only for Admin) -->
-                <div class="card p-6 mb-8 hidden" id="admin-issue-card">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">Admin: Issue New BVN</h2>
-                    <form id="issue-bvn-form" class="space-y-4">
-                        <div>
-                            <label for="issue-recipient-id" class="block text-sm font-medium text-gray-700">Recipient Email or UID</label>
-                            <input type="text" id="issue-recipient-id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="user@example.com or UID">
+                <div class="card" style="margin-bottom: 2rem; display: none;" id="admin-issue-card">
+                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Admin: Issue New BVN</h2>
+                    <form id="issue-bvn-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="issue-recipient-id" class="form-label">Recipient Email or UID</label>
+                            <input type="text" id="issue-recipient-id" required class="form-input" placeholder="user@example.com or UID">
                         </div>
-                        <div>
-                            <label for="issue-amount" class="block text-sm font-medium text-gray-700">Amount (BVN)</label>
-                            <input type="number" step="0.01" min="0.01" id="issue-amount" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="e.g., 1000.00">
+                        <div class="form-group">
+                            <label for="issue-amount" class="form-label">Amount (BVN)</label>
+                            <input type="number" step="0.01" min="0.01" id="issue-amount" required class="form-input" placeholder="e.g., 1000.00">
                         </div>
-                        <button type="submit" id="issue-bvn-button" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors" disabled>
+                        <button type="submit" id="issue-bvn-button" class="button button-danger" disabled>
                             Issue New BVN
                         </button>
                     </form>
@@ -547,22 +679,22 @@
             </div>
 
             <!-- Right Column: History & Directory -->
-            <div class="lg:col-span-1">
+            <div style="grid-column: span 1 / span 1;">
 
                 <!-- Transaction History -->
-                <div class="card p-6 mb-8">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">Transaction Log</h2>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Transaction Log</h2>
                     <div class="scrollable-content">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0">
+                        <table class="table">
+                            <thead>
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type / Contact</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IDs</th>
+                                    <th class="table-cell">Type / Contact</th>
+                                    <th class="table-cell">Amount</th>
+                                    <th class="table-cell">Time</th>
+                                    <th class="table-cell">IDs</th>
                                 </tr>
                             </thead>
-                            <tbody id="transaction-history-body" class="bg-white divide-y divide-gray-200">
+                            <tbody id="transaction-history-body">
                                 <!-- Transactions will be injected here -->
                             </tbody>
                         </table>
@@ -570,18 +702,18 @@
                 </div>
 
                 <!-- User Directory -->
-                <div class="card p-6">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">User Directory</h2>
+                <div class="card">
+                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">User Directory</h2>
                     <div class="scrollable-content">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0">
+                        <table class="table">
+                            <thead>
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UID</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                    <th class="table-cell">Email</th>
+                                    <th class="table-cell">UID</th>
+                                    <th class="table-cell">Role</th>
                                 </tr>
                             </thead>
-                            <tbody id="directory-body" class="bg-white divide-y divide-gray-200">
+                            <tbody id="directory-body">
                                 <!-- Profiles will be injected here -->
                             </tbody>
                         </table>
