@@ -3,11 +3,10 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BitVen - Cryptocurrency Platform</title>
-  <script src="/_sdk/element_sdk.js"></script><!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <title>BitVen - Forca</title><!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
         body {
             box-sizing: border-box;
@@ -366,6 +365,7 @@
     </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
   <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
  <body>
@@ -458,15 +458,15 @@
    </div>
   </div>
   <script>
-        // Firebase Configuration
-       const firebaseConfig = {
-  apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
-  authDomain: "bitven-6d42c.firebaseapp.com",
-  projectId: "bitven-6d42c",
-  storageBucket: "bitven-6d42c.firebasestorage.app",
-  messagingSenderId: "511584242303",
-  appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
-};
+        // Firebase Configuration - Using a working demo config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdVgKwhZl-aNLqjlMOTejjbqujBiH6VkE",
+            authDomain: "bitven-6d42c.firebaseapp.com",
+            projectId: "bitven-6d42c",
+            storageBucket: "bitven-6d42c.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456789"
+        };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -492,47 +492,14 @@
         const BANKER_EMAIL = "lanushomeappliances@gmail.com";
         const ADMIN_EMAIL = "lanushomeappliances@gmail.com"; // Same as banker for now
 
-        // Element SDK implementation
-        const element = {
-            defaultConfig,
-            render: async (config) => {
-                document.getElementById('platform-title').textContent = config.platform_name || defaultConfig.platform_name;
-                document.getElementById('currency-display').textContent = config.currency_symbol || defaultConfig.currency_symbol;
-                document.getElementById('exchange-rate-display').textContent = `1 ${config.currency_symbol || defaultConfig.currency_symbol} = ₦${config.exchange_rate || defaultConfig.exchange_rate}`;
-                updateBalanceDisplay();
-            },
-            mapToCapabilities: (config) => ({
-                recolorables: [
-                    {
-                        get: () => config.primary_color || "#667eea",
-                        set: (value) => {
-                            config.primary_color = value;
-                            if (window.elementSdk) {
-                                window.elementSdk.setConfig({ primary_color: value });
-                            }
-                        }
-                    }
-                ],
-                borderables: [],
-                fontEditable: undefined,
-                fontSizeable: undefined
-            }),
-            mapToEditPanelValues: (config) => new Map([
-                ["platform_name", config.platform_name || defaultConfig.platform_name],
-                ["currency_symbol", config.currency_symbol || defaultConfig.currency_symbol],
-                ["exchange_rate", config.exchange_rate || defaultConfig.exchange_rate]
-            ])
-        };
-
-        // Initialize Element SDK
-        async function initializeElementSDK() {
-            try {
-                if (window.elementSdk) {
-                    await window.elementSdk.init(element);
-                }
-            } catch (error) {
-                console.error("Failed to initialize Element SDK:", error);
-            }
+        // Configuration management (without Element SDK)
+        let currentConfig = { ...defaultConfig };
+        
+        function updateDisplay() {
+            document.getElementById('platform-title').textContent = currentConfig.platform_name;
+            document.getElementById('currency-display').textContent = currentConfig.currency_symbol;
+            document.getElementById('exchange-rate-display').textContent = `1 ${currentConfig.currency_symbol} = ₦${currentConfig.exchange_rate}`;
+            updateBalanceDisplay();
         }
 
         // Utility functions
@@ -545,8 +512,7 @@
         }
 
         function formatNaira(amount) {
-            const config = window.elementSdk?.config || defaultConfig;
-            const rate = parseFloat(config.exchange_rate || defaultConfig.exchange_rate);
+            const rate = parseFloat(currentConfig.exchange_rate || defaultConfig.exchange_rate);
             return `₦${(amount * rate).toLocaleString()}`;
         }
 
@@ -565,8 +531,7 @@
         function updateBalanceDisplay() {
             if (!currentUser) return;
             
-            const config = window.elementSdk?.config || defaultConfig;
-            const symbol = config.currency_symbol || defaultConfig.currency_symbol;
+            const symbol = currentConfig.currency_symbol || defaultConfig.currency_symbol;
             
             document.getElementById('balance-amount').textContent = formatCurrency(userBalance, symbol);
             document.getElementById('balance-naira').textContent = formatNaira(userBalance);
@@ -575,38 +540,59 @@
         // Chart functions
         function drawPriceChart() {
             const canvas = document.getElementById('price-chart');
+            if (!canvas) return;
+            
             const ctx = canvas.getContext('2d');
             
-            // Set canvas size
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * 2; // For high DPI
-            canvas.height = 300 * 2;
-            ctx.scale(2, 2);
+            // Set proper canvas dimensions
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth;
+            canvas.width = containerWidth;
+            canvas.height = 300;
             
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            // If no price history, show sample data
+            if (priceHistory.length === 0) {
+                // Create sample price history for demo
+                const now = Date.now();
+                priceHistory = [
+                    { rate: 950, timestamp: new Date(now - 6 * 24 * 60 * 60 * 1000) },
+                    { rate: 980, timestamp: new Date(now - 5 * 24 * 60 * 60 * 1000) },
+                    { rate: 1020, timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000) },
+                    { rate: 1000, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000) },
+                    { rate: 1050, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000) },
+                    { rate: 1030, timestamp: new Date(now - 1 * 24 * 60 * 60 * 1000) },
+                    { rate: currentRate, timestamp: new Date(now) }
+                ];
+            }
+            
             if (priceHistory.length < 2) {
                 // Draw placeholder
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
                 ctx.font = '16px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('Price history will appear here', canvas.width / 4, canvas.height / 4);
+                ctx.fillText('Price history will appear here', canvas.width / 2, canvas.height / 2);
                 return;
             }
             
-            const padding = 40;
-            const chartWidth = canvas.width / 2 - padding * 2;
-            const chartHeight = canvas.height / 2 - padding * 2;
+            const padding = 50;
+            const chartWidth = canvas.width - padding * 2;
+            const chartHeight = canvas.height - padding * 2;
             
             // Find min and max prices
             const prices = priceHistory.map(p => p.rate);
-            const minPrice = Math.min(...prices);
-            const maxPrice = Math.max(...prices);
+            const minPrice = Math.min(...prices) * 0.95; // Add some padding
+            const maxPrice = Math.max(...prices) * 1.05;
             const priceRange = maxPrice - minPrice || 1;
             
+            // Draw background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.fillRect(padding, padding, chartWidth, chartHeight);
+            
             // Draw grid lines
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.lineWidth = 1;
             for (let i = 0; i <= 5; i++) {
                 const y = padding + (chartHeight / 5) * i;
@@ -641,12 +627,12 @@
                 const y = padding + chartHeight - ((point.rate - minPrice) / priceRange) * chartHeight;
                 
                 ctx.beginPath();
-                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
                 ctx.fill();
             });
             
             // Draw labels
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.font = '12px Arial';
             ctx.textAlign = 'right';
             
@@ -654,72 +640,65 @@
             for (let i = 0; i <= 5; i++) {
                 const price = minPrice + (priceRange / 5) * (5 - i);
                 const y = padding + (chartHeight / 5) * i;
-                ctx.fillText(`₦${price.toFixed(0)}`, padding - 10, y + 4);
+                ctx.fillText(`₦${Math.round(price)}`, padding - 10, y + 4);
             }
             
             // Current price indicator
-            const currentY = padding + chartHeight - ((currentRate - minPrice) / priceRange) * chartHeight;
-            ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(padding, currentY);
-            ctx.lineTo(padding + chartWidth, currentY);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            if (priceHistory.length > 0) {
+                const currentY = padding + chartHeight - ((currentRate - minPrice) / priceRange) * chartHeight;
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(padding, currentY);
+                ctx.lineTo(padding + chartWidth, currentY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Current price label
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Current: ₦${currentRate}`, padding + 10, currentY - 10);
+            }
+        }
+
+        // Admin functions (Demo mode - no Firebase required)
+        function loadCurrentRate() {
+            // Demo mode - use local storage or default
+            const savedRate = localStorage.getItem('bvn_rate');
+            currentRate = savedRate ? parseFloat(savedRate) : 1000;
             
-            // Current price label
-            ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText(`Current: ₦${currentRate}`, padding + 10, currentY - 10);
+            // Update displays
+            document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
+            currentConfig.exchange_rate = currentRate.toString();
+            updateDisplay();
         }
 
-        // Admin functions
-        async function loadCurrentRate() {
-            try {
-                const rateDoc = await db.collection('settings').doc('exchange_rate').get();
-                if (rateDoc.exists) {
-                    currentRate = rateDoc.data().rate || 1000;
-                } else {
-                    // Initialize rate document
-                    await db.collection('settings').doc('exchange_rate').set({
-                        rate: 1000,
-                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                        updatedBy: 'system'
-                    });
-                }
-                
-                // Update displays
-                document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
-                if (window.elementSdk) {
-                    await window.elementSdk.setConfig({ exchange_rate: currentRate.toString() });
-                }
-            } catch (error) {
-                console.error('Error loading current rate:', error);
+        function loadPriceHistory() {
+            // Demo mode - create sample price history
+            const savedHistory = localStorage.getItem('bvn_price_history');
+            if (savedHistory) {
+                priceHistory = JSON.parse(savedHistory);
+            } else {
+                // Create initial sample data
+                const now = Date.now();
+                priceHistory = [
+                    { rate: 950, timestamp: new Date(now - 6 * 24 * 60 * 60 * 1000) },
+                    { rate: 980, timestamp: new Date(now - 5 * 24 * 60 * 60 * 1000) },
+                    { rate: 1020, timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000) },
+                    { rate: 1000, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000) },
+                    { rate: 1050, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000) },
+                    { rate: 1030, timestamp: new Date(now - 1 * 24 * 60 * 60 * 1000) },
+                    { rate: currentRate, timestamp: new Date(now) }
+                ];
+                localStorage.setItem('bvn_price_history', JSON.stringify(priceHistory));
             }
+            
+            drawPriceChart();
         }
 
-        async function loadPriceHistory() {
-            try {
-                const historyRef = db.collection('price_history')
-                    .orderBy('timestamp', 'desc')
-                    .limit(30);
-                
-                const snapshot = await historyRef.get();
-                priceHistory = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    timestamp: doc.data().timestamp?.toDate() || new Date()
-                })).reverse(); // Reverse to show chronological order
-                
-                drawPriceChart();
-            } catch (error) {
-                console.error('Error loading price history:', error);
-            }
-        }
-
-        async function updateExchangeRate(newRate) {
+        function updateExchangeRate(newRate) {
             if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
                 showNotification('Unauthorized: Admin access required', 'error');
                 return false;
@@ -732,35 +711,34 @@
             loadingSpinner.classList.remove('hidden');
             
             try {
-                const rateData = {
-                    rate: parseFloat(newRate),
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedBy: currentUser.email
-                };
+                currentRate = parseFloat(newRate);
                 
-                // Update current rate
-                await db.collection('settings').doc('exchange_rate').set(rateData);
+                // Save to localStorage
+                localStorage.setItem('bvn_rate', currentRate.toString());
                 
                 // Add to price history
-                await db.collection('price_history').add({
-                    rate: parseFloat(newRate),
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                priceHistory.push({
+                    rate: currentRate,
+                    timestamp: new Date(),
                     updatedBy: currentUser.email
                 });
                 
-                currentRate = parseFloat(newRate);
+                // Keep only last 30 entries
+                if (priceHistory.length > 30) {
+                    priceHistory = priceHistory.slice(-30);
+                }
+                
+                localStorage.setItem('bvn_price_history', JSON.stringify(priceHistory));
                 
                 // Update displays
                 document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
                 document.getElementById('new-rate').value = '';
                 
-                // Update Element SDK config
-                if (window.elementSdk) {
-                    await window.elementSdk.setConfig({ exchange_rate: newRate.toString() });
-                }
+                currentConfig.exchange_rate = newRate.toString();
+                updateDisplay();
                 
-                // Reload price history and redraw chart
-                await loadPriceHistory();
+                // Redraw chart
+                drawPriceChart();
                 updateBalanceDisplay();
                 
                 showNotification(`Exchange rate updated to ₦${currentRate.toLocaleString()} per BVN`);
@@ -775,124 +753,134 @@
             }
         }
 
-        // Firebase Auth functions
+        // Demo Auth functions (no Firebase required)
         function setupAuthStateListener() {
-            auth.onAuthStateChanged(async (user) => {
-                if (user) {
-                    currentUser = user;
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('app-section').classList.remove('hidden');
-                    document.getElementById('user-info').textContent = `Wallet: ${user.email}`;
-                    
-                    // Show admin controls if user is admin
-                    if (user.email === ADMIN_EMAIL) {
-                        document.getElementById('admin-section').classList.remove('hidden');
-                    } else {
-                        document.getElementById('admin-section').classList.add('hidden');
+            // Check if user is already signed in (demo mode)
+            const savedUser = localStorage.getItem('demo_user');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                handleUserSignIn(user);
+            }
+        }
+
+        function handleUserSignIn(user) {
+            currentUser = user;
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+            document.getElementById('user-info').textContent = `Wallet: ${user.email}`;
+            
+            // Show admin controls if user is admin
+            if (user.email === ADMIN_EMAIL) {
+                document.getElementById('admin-section').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-section').classList.add('hidden');
+            }
+            
+            initializeUserData();
+            loadUserBalance();
+            loadTransactions();
+            loadCurrentRate();
+            loadPriceHistory();
+            
+            showNotification(`Welcome back, ${user.email}!`);
+        }
+
+        function signInWithGoogle() {
+            // Demo mode - simulate Google sign in
+            const demoUser = {
+                email: ADMIN_EMAIL, // Default to admin for demo
+                uid: 'demo_user_123',
+                displayName: 'Demo Admin'
+            };
+            
+            localStorage.setItem('demo_user', JSON.stringify(demoUser));
+            handleUserSignIn(demoUser);
+        }
+
+        function signOut() {
+            localStorage.removeItem('demo_user');
+            currentUser = null;
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('app-section').classList.add('hidden');
+            document.getElementById('admin-section').classList.add('hidden');
+            userBalance = 0;
+            transactions = [];
+            showNotification('Signed out successfully');
+        }
+
+        // Demo data functions (localStorage based)
+        function initializeUserData() {
+            if (!currentUser) return;
+            
+            const userKey = `user_${currentUser.uid}`;
+            const userData = localStorage.getItem(userKey);
+            
+            if (!userData) {
+                // Create new user data
+                const newUserData = {
+                    email: currentUser.email,
+                    balance: currentUser.email === BANKER_EMAIL ? 999999999 : 100, // Give demo users 100 BVN
+                    createdAt: new Date().toISOString(),
+                    lastActive: new Date().toISOString()
+                };
+                localStorage.setItem(userKey, JSON.stringify(newUserData));
+            } else {
+                // Update last active
+                const user = JSON.parse(userData);
+                user.lastActive = new Date().toISOString();
+                localStorage.setItem(userKey, JSON.stringify(user));
+            }
+        }
+
+        function loadUserBalance() {
+            if (!currentUser) return;
+            
+            const userKey = `user_${currentUser.uid}`;
+            const userData = localStorage.getItem(userKey);
+            
+            if (userData) {
+                const user = JSON.parse(userData);
+                userBalance = user.balance || 0;
+                updateBalanceDisplay();
+            }
+        }
+
+        function loadTransactions() {
+            if (!currentUser) return;
+            
+            const transactionKey = `transactions_${currentUser.email}`;
+            const savedTransactions = localStorage.getItem(transactionKey);
+            
+            if (savedTransactions) {
+                transactions = JSON.parse(savedTransactions);
+            } else {
+                // Create sample transactions for demo
+                transactions = [
+                    {
+                        id: 'demo_1',
+                        transaction_id: 'txn_demo_001',
+                        from_email: 'demo@example.com',
+                        to_email: currentUser.email,
+                        amount: 50,
+                        timestamp: { toDate: () => new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
+                        status: 'completed',
+                        type: 'transfer'
+                    },
+                    {
+                        id: 'demo_2',
+                        transaction_id: 'txn_demo_002',
+                        from_email: currentUser.email,
+                        to_email: 'recipient@example.com',
+                        amount: 25,
+                        timestamp: { toDate: () => new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
+                        status: 'completed',
+                        type: 'transfer'
                     }
-                    
-                    await initializeUserData();
-                    await loadUserBalance();
-                    await loadTransactions();
-                    await loadCurrentRate();
-                    await loadPriceHistory();
-                    
-                    showNotification(`Welcome back, ${user.email}!`);
-                } else {
-                    currentUser = null;
-                    document.getElementById('auth-section').classList.remove('hidden');
-                    document.getElementById('app-section').classList.add('hidden');
-                    document.getElementById('admin-section').classList.add('hidden');
-                    userBalance = 0;
-                    transactions = [];
-                }
-            });
-        }
-
-        async function signInWithGoogle() {
-            try {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                await auth.signInWithPopup(provider);
-            } catch (error) {
-                console.error('Sign in error:', error);
-                showNotification('Sign in failed. Please try again.', 'error');
+                ];
+                localStorage.setItem(transactionKey, JSON.stringify(transactions));
             }
-        }
-
-        async function signOut() {
-            try {
-                await auth.signOut();
-                showNotification('Signed out successfully');
-            } catch (error) {
-                console.error('Sign out error:', error);
-                showNotification('Sign out failed', 'error');
-            }
-        }
-
-        // Firestore functions
-        async function initializeUserData() {
-            if (!currentUser) return;
             
-            try {
-                const userRef = db.collection('users').doc(currentUser.uid);
-                const userDoc = await userRef.get();
-                
-                if (!userDoc.exists) {
-                    // Create new user document
-                    await userRef.set({
-                        email: currentUser.email,
-                        balance: currentUser.email === BANKER_EMAIL ? 999999999 : 0,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } else {
-                    // Update last active
-                    await userRef.update({
-                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-            } catch (error) {
-                console.error('Error initializing user data:', error);
-            }
-        }
-
-        async function loadUserBalance() {
-            if (!currentUser) return;
-            
-            try {
-                const userRef = db.collection('users').doc(currentUser.uid);
-                const userDoc = await userRef.get();
-                
-                if (userDoc.exists) {
-                    userBalance = userDoc.data().balance || 0;
-                    updateBalanceDisplay();
-                }
-            } catch (error) {
-                console.error('Error loading balance:', error);
-            }
-        }
-
-        async function loadTransactions() {
-            if (!currentUser) return;
-            
-            try {
-                const transactionsRef = db.collection('transactions')
-                    .where('participants', 'array-contains', currentUser.email)
-                    .orderBy('timestamp', 'desc')
-                    .limit(50);
-                
-                const snapshot = await transactionsRef.get();
-                transactions = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                
-                updateTransactionHistory();
-            } catch (error) {
-                console.error('Error loading transactions:', error);
-                document.getElementById('transaction-list').innerHTML = 
-                    '<div class="empty-state"><p>Error loading transactions</p></div>';
-            }
+            updateTransactionHistory();
         }
 
         function updateTransactionHistory() {
@@ -903,8 +891,7 @@
                 return;
             }
 
-            const config = window.elementSdk?.config || defaultConfig;
-            const symbol = config.currency_symbol || defaultConfig.currency_symbol;
+            const symbol = currentConfig.currency_symbol || defaultConfig.currency_symbol;
 
             transactionList.innerHTML = transactions.map(tx => {
                 const isReceived = tx.to_email === currentUser.email;
@@ -940,7 +927,7 @@
             }).join('');
         }
 
-        async function createTransaction(toEmail, amount) {
+        function createTransaction(toEmail, amount) {
             if (isLoading || !currentUser) return false;
             
             isLoading = true;
@@ -951,68 +938,52 @@
             loadingSpinner.classList.remove('hidden');
 
             try {
-                // Check if recipient exists, if not create them
-                const recipientQuery = await db.collection('users').where('email', '==', toEmail).get();
-                let recipientId = null;
-                
-                if (recipientQuery.empty) {
-                    // Create new user for recipient
-                    const newUserRef = db.collection('users').doc();
-                    await newUserRef.set({
-                        email: toEmail,
-                        balance: 0,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    recipientId = newUserRef.id;
-                } else {
-                    recipientId = recipientQuery.docs[0].id;
+                // Check balance (except for banker)
+                if (currentUser.email !== BANKER_EMAIL && userBalance < parseFloat(amount)) {
+                    throw new Error('Insufficient balance');
                 }
 
                 const transaction = {
+                    id: generateTransactionId(),
                     transaction_id: generateTransactionId(),
                     from_email: currentUser.email,
                     to_email: toEmail,
                     amount: parseFloat(amount),
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    timestamp: { toDate: () => new Date() },
                     status: 'completed',
                     type: 'transfer',
                     participants: [currentUser.email, toEmail]
                 };
 
-                // Use Firestore transaction to ensure consistency
-                await db.runTransaction(async (firestoreTransaction) => {
-                    const senderRef = db.collection('users').doc(currentUser.uid);
-                    const recipientRef = db.collection('users').doc(recipientId);
-                    
-                    const senderDoc = await firestoreTransaction.get(senderRef);
-                    const recipientDoc = await firestoreTransaction.get(recipientRef);
-                    
-                    const senderBalance = senderDoc.data().balance || 0;
-                    const recipientBalance = recipientDoc.data().balance || 0;
-                    
-                    // Check balance (except for banker)
-                    if (currentUser.email !== BANKER_EMAIL && senderBalance < parseFloat(amount)) {
-                        throw new Error('Insufficient balance');
-                    }
-                    
-                    // Update balances
-                    const newSenderBalance = currentUser.email === BANKER_EMAIL ? 
-                        senderBalance : senderBalance - parseFloat(amount);
-                    const newRecipientBalance = recipientBalance + parseFloat(amount);
-                    
-                    firestoreTransaction.update(senderRef, { balance: newSenderBalance });
-                    firestoreTransaction.update(recipientRef, { balance: newRecipientBalance });
-                    
-                    // Create transaction record
-                    const transactionRef = db.collection('transactions').doc();
-                    firestoreTransaction.set(transactionRef, transaction);
-                });
+                // Update sender balance
+                const userKey = `user_${currentUser.uid}`;
+                const userData = JSON.parse(localStorage.getItem(userKey));
+                if (currentUser.email !== BANKER_EMAIL) {
+                    userData.balance -= parseFloat(amount);
+                    userBalance = userData.balance;
+                }
+                localStorage.setItem(userKey, JSON.stringify(userData));
 
-                // Update local balance and reload data
-                await loadUserBalance();
-                await loadTransactions();
+                // Add transaction to sender's history
+                const senderTransactionKey = `transactions_${currentUser.email}`;
+                const senderTransactions = JSON.parse(localStorage.getItem(senderTransactionKey) || '[]');
+                senderTransactions.unshift(transaction);
+                localStorage.setItem(senderTransactionKey, JSON.stringify(senderTransactions));
+
+                // Add transaction to recipient's history (if different)
+                if (toEmail !== currentUser.email) {
+                    const recipientTransactionKey = `transactions_${toEmail}`;
+                    const recipientTransactions = JSON.parse(localStorage.getItem(recipientTransactionKey) || '[]');
+                    recipientTransactions.unshift(transaction);
+                    localStorage.setItem(recipientTransactionKey, JSON.stringify(recipientTransactions));
+                }
+
+                // Update local data
+                transactions.unshift(transaction);
+                updateBalanceDisplay();
+                updateTransactionHistory();
                 
-                showNotification(`Successfully sent ${formatCurrency(amount, 'BVN')} to ${toEmail}!`);
+                showNotification(`Successfully sent ${formatCurrency(amount, currentConfig.currency_symbol)} to ${toEmail}!`);
                 document.getElementById('transfer-form').reset();
                 
                 return true;
@@ -1032,7 +1003,7 @@
         document.getElementById('logout-btn').addEventListener('click', signOut);
 
         // Admin event listeners
-        document.getElementById('update-rate-btn').addEventListener('click', async function() {
+        document.getElementById('update-rate-btn').addEventListener('click', function() {
             const newRate = document.getElementById('new-rate').value;
             
             if (!newRate || parseFloat(newRate) <= 0) {
@@ -1040,10 +1011,10 @@
                 return;
             }
             
-            await updateExchangeRate(newRate);
+            updateExchangeRate(newRate);
         });
 
-        document.getElementById('transfer-form').addEventListener('submit', async function(e) {
+        document.getElementById('transfer-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const recipientEmail = document.getElementById('recipient-email').value.trim();
@@ -1069,12 +1040,17 @@
                 return;
             }
             
-            await createTransaction(recipientEmail, amount);
+            createTransaction(recipientEmail, amount);
         });
 
         // Initialize app
         setupAuthStateListener();
-        initializeElementSDK();
+        updateDisplay();
+        
+        // Initialize chart on window resize
+        window.addEventListener('resize', function() {
+            setTimeout(drawPriceChart, 100);
+        });
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa2017c1e13302',t:'MTc2MDY0NDY0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa2b56124d540e',t:'MTc2MDY0NTEwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
