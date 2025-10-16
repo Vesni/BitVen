@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen-Forca</title>
+    <title>BitVen-Forca Secure Crypto Bank</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
@@ -367,7 +367,18 @@
 
         // --- Configuration & Globals ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        // ** USER-PROVIDED FIREBASE CONFIGURATION **
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
+            authDomain: "bitven-6d42c.firebaseapp.com",
+            projectId: "bitven-6d42c",
+            storageBucket: "bitven-6d42c.firebasestorage.app",
+            messagingSenderId: "511584242303",
+            appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
+        };
+        // ** END FIREBASE CONFIGURATION **
+
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
