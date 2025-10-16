@@ -1,734 +1,1080 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen-Forca Secure Crypto Bank</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
-    <style>
-        /* --- Base & Typography --- */
-        :root {
-            --color-primary: #007bff; /* Blue */
-            --color-secondary: #28a745; /* Green */
-            --color-warning: #ffc107; /* Yellow */
-            --color-danger: #dc3545; /* Red */
-            --color-background: #f4f6f9;
-            --color-card: #ffffff;
-            --color-text-dark: #212529;
-            --color-text-light: #6c757d;
-        }
-
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitVen - Cryptocurrency Platform</title>
+  <script src="/_sdk/element_sdk.js"></script><!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--color-background);
-            padding: 20px;
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            color: white;
         }
-
-        #app-container {
-            width: 100%;
-            max-width: 1000px;
-            background-color: var(--color-card);
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
-
-        /* --- Headers --- */
-        h1 {
-            font-size: 2.25rem;
-            font-weight: 800;
-            color: var(--color-text-dark);
-            margin-bottom: 0.5rem;
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header .subtitle {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+        }
+        
+        .currency-info {
             display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .currency-symbol {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .exchange-rate {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .wallet-section h2,
+        .transfer-section h2,
+        .history-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            color: white;
+        }
+        
+        .balance-display {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .balance-amount {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+        
+        .balance-naira {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
+        
+        .user-info {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
+            text-decoration: none;
         }
-
-        h1 span.symbol {
-            font-size: 2.5rem;
-            color: var(--color-secondary);
-            margin-right: 10px;
-        }
-
-        h2 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--color-primary);
-            margin-bottom: 1.5rem;
-            padding-bottom: 5px;
-            border-bottom: 2px solid var(--color-primary);
-            display: flex;
-            align-items: center;
-        }
-
-        /* --- Buttons --- */
-        .btn {
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.2s;
-            cursor: pointer;
-            text-align: center;
-            border: none;
-            flex: 1;
-            margin: 0 5px;
-        }
-
-        .btn-deposit {
-            background-color: var(--color-secondary);
+        
+        .btn-primary {
+            background: #2196F3;
             color: white;
         }
-
-        .btn-deposit:hover:not(:disabled) {
-            background-color: #218838;
-            box-shadow: 0 4px 6px rgba(40, 167, 69, 0.3);
+        
+        .btn-primary:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
         }
-
-        .btn-withdraw {
-            background-color: var(--color-danger);
+        
+        .btn-success {
+            background: #4CAF50;
             color: white;
         }
-
-        .btn-withdraw:hover:not(:disabled) {
-            background-color: #c82333;
-            box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3);
+        
+        .btn-success:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+        
+        .btn-full {
+            width: 100%;
         }
         
         .btn:disabled {
-            opacity: 0.7;
+            opacity: 0.6;
             cursor: not-allowed;
-        }
-
-        /* --- Form Elements --- */
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ced4da;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transform: none;
         }
         
-        .input-field:focus {
-            border-color: var(--color-primary);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
         }
-
-        .label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--color-text-dark);
-            margin-bottom: 5px;
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-
-        /* --- Account Details & Balance --- */
-        #user-account-details {
-            background-color: #e9f5ff; /* Light Blue */
-            border-left: 5px solid var(--color-primary);
+        
+        .transaction-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
             padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-
-        .balance-display {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-top: 10px;
-            display: block;
-        }
-
-        .balance-label {
-            font-size: 1rem;
-            color: var(--color-text-light);
-            font-weight: 600;
-        }
-
-        .text-bvn {
-            color: var(--color-secondary);
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
         }
         
-        .text-ngn {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--color-text-dark);
-            margin-top: 5px;
-            display: block;
+        .transaction-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
-
-        .text-negative {
-            color: var(--color-danger);
-        }
-
-        .text-positive {
-            color: var(--color-secondary);
-        }
-
-        /* --- Admin View Specifics --- */
-        #admin-view h2 {
-            color: #007bff;
-            border-bottom-color: #007bff;
-        }
-
-        #admin-account-list {
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: 15px; /* Space for scrollbar */
-            margin-top: 15px;
-            border-top: 1px solid #ccc;
-            padding-top: 15px;
-        }
-
-        .account-item {
+        
+        .transaction-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            background-color: var(--color-card);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e0e0e0;
-        }
-
-        .account-item.admin-self {
-            border: 2px solid var(--color-warning);
-            background-color: #fffde7;
-        }
-
-        .account-details p {
-            margin: 0;
-        }
-
-        .account-name {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--color-text-dark);
-        }
-
-        .account-uid {
-            font-size: 0.75rem;
-            font-family: monospace;
-            color: var(--color-text-light);
-            word-break: break-all;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
-        .account-balance-display {
+        .transaction-amount {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .amount-positive {
+            color: #4CAF50;
+        }
+        
+        .amount-negative {
+            color: #f44336;
+        }
+        
+        .transaction-details {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 5px;
+        }
+        
+        .transaction-date {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .transaction-right {
             text-align: right;
         }
-
-        .account-balance-display .bvn {
-            font-size: 1.5rem;
-            font-weight: 800;
-        }
-
-        /* --- Messages & Loading --- */
-        .message-box {
-            padding: 10px 15px;
-            border-radius: 6px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .msg-error {
-            background-color: #f8d7da;
-            color: var(--color-danger);
-            border: 1px solid #f5c6cb;
-        }
-
-        .msg-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        #loading-state {
-            text-align: center;
-            padding: 50px;
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
         }
         
-        .spinner {
-            border: 4px solid rgba(0, 123, 255, 0.1);
-            border-top: 4px solid var(--color-primary);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
+        .status-completed {
+            background: #4CAF50;
+            color: white;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        
+        .status-pending {
+            background: #FF9800;
+            color: white;
         }
-
-        @media (max-width: 600px) {
-            #app-container {
-                padding: 15px;
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .notification-success {
+            background: #4CAF50;
+        }
+        
+        .notification-error {
+            background: #f44336;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
             }
-            h1 {
-                font-size: 1.75rem;
+            to {
+                transform: translateX(0);
+                opacity: 1;
             }
-            .balance-display {
-                font-size: 2rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .google-btn {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .google-btn:hover {
+            background: #f5f5f5;
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
             }
-            .btn-container {
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .currency-info {
                 flex-direction: column;
+                gap: 10px;
             }
-            .btn {
-                margin: 5px 0;
+            
+            .transaction-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .transaction-right {
+                text-align: left;
             }
         }
     </style>
-</head>
-<body>
-
-    <div id="app-container">
-        <header style="text-align: center; margin-bottom: 30px;">
-            <h1>
-                <span class="symbol">₿</span>
-                BitVen-Forca
-                <span style="font-size: 1rem; font-weight: 400; color: var(--color-secondary); margin-left: 10px;">(1 BVN = ₦1,000)</span>
-            </h1>
-            <p id="auth-status" style="font-size: 0.9rem; font-weight: 600; margin-top: 5px; color: var(--color-text-light);">Initializing...</p>
-        </header>
-
-        <!-- Loading State -->
-        <div id="loading-state">
-            <div class="spinner"></div>
-            <p style="margin-top: 10px; color: var(--color-text-light);">Connecting to the Ledger...</p>
-        </div>
-
-        <!-- Admin View Container -->
-        <div id="admin-view" style="display: none;">
-            <h2>Admin Dashboard</h2>
-            <p style="font-size: 0.9rem; color: var(--color-text-light);">Viewing all accounts. Wallet Owner: <span id="admin-user-id" style="font-family: monospace;"></span></p>
-            <div id="admin-account-list">
-                <!-- Accounts will be injected here -->
-            </div>
-            <div id="admin-empty-state" class="message-box" style="display: none;">
-                No accounts found in the database. Please check seeding function.
-            </div>
-        </div>
-
-        <!-- User View Container -->
-        <div id="user-view" style="display: none;">
-            <h2>Your Account</h2>
-            <div id="user-account-details">
-                <p style="font-size: 1.1rem; font-weight: 600;">Welcome, <span id="user-account-name" style="color: var(--color-primary);"></span>!</p>
-                <p style="font-size: 0.8rem; color: var(--color-text-light); margin-top: 5px;">User ID: <span id="user-id" style="font-family: monospace;"></span></p>
-                
-                <hr style="margin: 15px 0; border-color: #cce5ff;">
-
-                <div class="balance-label">Current Balance</div>
-                <span id="account-balance-bvn" class="balance-display text-bvn">0.00 BVN</span>
-                <span id="account-balance-ngn" class="text-ngn">₦0.00</span>
-            </div>
-
-            <!-- Transaction Form -->
-            <div style="background-color: var(--color-card); padding: 20px; border-radius: 8px; border: 1px solid #e0e0e0;">
-                <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-dark); margin-bottom: 20px;">Secure Transaction</h3>
-                <div class="input-group">
-                    <label for="transaction-amount" class="label">Amount (BVN)</label>
-                    <input type="number" id="transaction-amount" class="input-field" placeholder="e.g., 50.50" min="0.01" step="0.01">
-                </div>
-                
-                <div id="error-message" class="message-box msg-error" style="display: none;"></div>
-                
-                <div class="btn-container" style="display: flex; margin-top: 20px;">
-                    <button id="deposit-btn" class="btn btn-deposit">Deposit BVN</button>
-                    <button id="withdraw-btn" class="btn btn-withdraw">Withdraw BVN</button>
-                </div>
-                
-                <div id="transaction-feedback" class="message-box msg-success" style="display: none;"></div>
-            </div>
-        </div>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="container"><!-- Header -->
+   <header class="header">
+    <div class="card">
+     <h1 id="platform-title">BitVen</h1>
+     <p class="subtitle">By Forca Team</p>
+     <div class="currency-info"><span id="currency-display" class="currency-symbol">BVN</span> <span style="color: rgba(255, 255, 255, 0.5);">•</span> <span id="exchange-rate-display" class="exchange-rate">1 BVN = ₦1,000</span>
+     </div>
     </div>
+   </header><!-- Authentication Section -->
+   <div id="auth-section" class="card">
+    <h2 style="text-align: center; margin-bottom: 30px;">Welcome to BitVen</h2>
+    <div style="text-align: center;"><button id="google-signin-btn" class="btn google-btn btn-full">
+      <svg width="20" height="20" viewbox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /> <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /> <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /> <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+      </svg> Sign in with Google </button>
+     <p style="margin-top: 20px; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">Secure authentication powered by Google</p>
+    </div>
+   </div><!-- Main App Section -->
+   <div id="app-section" class="hidden"><!-- Admin Controls (Only visible to admin) -->
+    <div id="admin-section" class="card hidden" style="background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3);">
+     <h2 style="color: #ffc107;">🔧 Admin Controls</h2>
+     <div class="grid" style="margin-bottom: 0;">
+      <div>
+       <div class="form-group"><label for="new-rate">Set New BVN Rate (₦)</label> <input type="number" id="new-rate" class="form-control" placeholder="1000" min="1" step="0.01">
+       </div><button id="update-rate-btn" class="btn btn-primary btn-full"> <span id="update-rate-text">Update Rate</span>
+        <div id="update-rate-loading" class="loading-spinner hidden"></div></button>
+      </div>
+      <div>
+       <h3 style="margin-bottom: 15px; color: #ffc107;">Current Rate</h3>
+       <div style="text-align: center;">
+        <div id="admin-current-rate" style="font-size: 2rem; font-weight: bold; color: #ffd700;">
+         ₦1,000
+        </div>
+        <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+         per BVN
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="grid"><!-- Wallet Section -->
+     <div class="card">
+      <h2>Your Wallet</h2>
+      <div class="balance-display">
+       <div id="balance-amount" class="balance-amount">
+        0 BVN
+       </div>
+       <div id="balance-naira" class="balance-naira">
+        ₦0
+       </div>
+       <div id="user-info" class="user-info">
+        Wallet: Loading...
+       </div>
+      </div><button id="logout-btn" class="btn btn-danger btn-full"> Sign Out </button>
+     </div><!-- Transfer Section -->
+     <div class="card">
+      <h2>Send BVN</h2>
+      <form id="transfer-form">
+       <div class="form-group"><label for="recipient-email">Recipient Email</label> <input type="email" id="recipient-email" class="form-control" placeholder="recipient@example.com" required>
+       </div>
+       <div class="form-group"><label for="transfer-amount">Amount (BVN)</label> <input type="number" id="transfer-amount" step="0.01" min="0.01" class="form-control" placeholder="0.00" required>
+       </div><button type="submit" id="send-btn" class="btn btn-success btn-full"> <span id="send-btn-text">Send BVN</span>
+        <div id="send-loading" class="loading-spinner hidden"></div></button>
+      </form>
+     </div>
+    </div><!-- Price Chart -->
+    <div class="card">
+     <h2>BVN Price Chart</h2>
+     <div id="price-chart-container">
+      <canvas id="price-chart" width="800" height="300" style="max-width: 100%; height: auto;"></canvas>
+     </div>
+     <div style="margin-top: 20px; text-align: center; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 10px;">
+      <h3 style="color: #ffc107; margin-bottom: 15px;">💰 Want to Buy or Sell BVN?</h3>
+      <p style="margin-bottom: 15px; color: rgba(255, 255, 255, 0.9);">Contact our official trader for secure BVN transactions</p>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;"><span style="font-weight: bold;">📧 Vesni:</span> <a href="mailto:vesni277@gmail.com" style="color: #4CAF50; text-decoration: none; font-weight: bold;"> vesni277@gmail.com </a>
+      </div>
+      <p style="margin-top: 10px; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">Trusted • Secure • Fast Transactions</p>
+     </div>
+    </div><!-- Transaction History -->
+    <div class="card">
+     <h2>Transaction History</h2>
+     <div id="transaction-list">
+      <div class="empty-state">
+       <p>Loading transactions...</p>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+        // Firebase Configuration
+       const firebaseConfig = {
+  apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
+  authDomain: "bitven-6d42c.firebaseapp.com",
+  projectId: "bitven-6d42c",
+  storageBucket: "bitven-6d42c.firebasestorage.app",
+  messagingSenderId: "511584242303",
+  appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
+};
 
-    <!-- Firebase Script Block -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, runTransaction, query, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // --- Configuration & Globals ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // ** USER-PROVIDED FIREBASE CONFIGURATION **
-        const firebaseConfig = {
-            apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
-            authDomain: "bitven-6d42c.firebaseapp.com",
-            projectId: "bitven-6d42c",
-            storageBucket: "bitven-6d42c.firebasestorage.app",
-            messagingSenderId: "511584242303",
-            appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
+        // Configuration
+        const defaultConfig = {
+            platform_name: "BitVen",
+            currency_symbol: "BVN",
+            exchange_rate: "1000"
         };
-        // ** END FIREBASE CONFIGURATION **
 
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Global state
+        let currentUser = null;
+        let userBalance = 0;
+        let transactions = [];
+        let isLoading = false;
+        let priceHistory = [];
+        let currentRate = 1000;
 
-        const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
-        const BVN_TO_NGN_RATE = 1000; // 1 BVN = ₦1,000
+        // Admin and Banker accounts
+        const BANKER_EMAIL = "lanushomeappliances@gmail.com";
+        const ADMIN_EMAIL = "lanushomeappliances@gmail.com"; // Same as banker for now
 
-        let app, db, auth, userId = null;
-        let isAdmin = false;
-
-        // --- DOM Elements (Cached) ---
-        const loadingStateEl = document.getElementById('loading-state');
-        const authStatusEl = document.getElementById('auth-status');
-        const userViewEl = document.getElementById('user-view');
-        const adminViewEl = document.getElementById('admin-view');
-        const accountBalanceBvnEl = document.getElementById('account-balance-bvn');
-        const accountBalanceNgnEl = document.getElementById('account-balance-ngn');
-        const transactionAmountEl = document.getElementById('transaction-amount');
-        const depositBtn = document.getElementById('deposit-btn');
-        const withdrawBtn = document.getElementById('withdraw-btn');
-        const errorMessageEl = document.getElementById('error-message');
-        const transactionFeedbackEl = document.getElementById('transaction-feedback');
-        const adminAccountListEl = document.getElementById('admin-account-list');
-        const adminEmptyStateEl = document.getElementById('admin-empty-state');
-        
-        // --- Utility Functions ---
-
-        const formatBVN = (amount) => {
-            return `${parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} BVN`;
-        };
-        
-        const formatNaira = (amount) => {
-            const ngnValue = parseFloat(amount) * BVN_TO_NGN_RATE;
-            // Use en-NG locale for Naira symbol and thousand separators
-            return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(ngnValue);
-        };
-
-        const displayMessage = (el, text, type = 'success', duration = 5000) => {
-            el.textContent = text;
-            el.className = `message-box msg-${type}`;
-            el.style.display = 'block';
-
-            setTimeout(() => {
-                el.style.display = 'none';
-            }, duration);
-        };
-
-        const setLoading = (isLoading) => {
-            depositBtn.disabled = isLoading;
-            withdrawBtn.disabled = isLoading;
-            if (isLoading) {
-                 transactionFeedbackEl.style.display = 'block';
-                 transactionFeedbackEl.textContent = 'Processing transaction securely...';
-                 transactionFeedbackEl.className = 'message-box msg-success';
-                 errorMessageEl.style.display = 'none';
-            } else {
-                 // The success/error message display handles its own visibility
-            }
-        };
-
-        // --- Database & Seeding ---
-        const getAccountCollectionRef = () => {
-             // Mandatory Public Data Path
-             return collection(db, 'artifacts', appId, 'public', 'data', 'accounts');
-        };
-
-        async function seedDatabase(currentUserId, currentUserEmail) {
-            const accountsRef = getAccountCollectionRef();
-            // We only check for the admin account doc existence to decide if seeding is needed
-            const adminDocRef = doc(accountsRef, currentUserId);
-            
-            try {
-                const adminDoc = await getDocs(accountsRef);
-                
-                if (adminDoc.empty) {
-                    console.log("Database empty. Seeding with initial accounts.");
-                    
-                    const seedAccounts = [
-                        { 
-                            name: "Admin Master Wallet", 
-                            email: ADMIN_EMAIL, 
-                            balance: 100000.00, // Large starting balance
-                            userId: currentUserId // This is the admin's actual UID
-                        },
-                        { 
-                            name: "Test User Alpha", 
-                            email: "test.alpha@bitven.com", 
-                            balance: 5000.00, 
-                            userId: 'test_uid_alpha'
-                        },
-                        { 
-                            name: "Test User Beta", 
-                            email: "test.beta@bitven.com", 
-                            balance: 1000.75, 
-                            userId: 'test_uid_beta'
+        // Element SDK implementation
+        const element = {
+            defaultConfig,
+            render: async (config) => {
+                document.getElementById('platform-title').textContent = config.platform_name || defaultConfig.platform_name;
+                document.getElementById('currency-display').textContent = config.currency_symbol || defaultConfig.currency_symbol;
+                document.getElementById('exchange-rate-display').textContent = `1 ${config.currency_symbol || defaultConfig.currency_symbol} = ₦${config.exchange_rate || defaultConfig.exchange_rate}`;
+                updateBalanceDisplay();
+            },
+            mapToCapabilities: (config) => ({
+                recolorables: [
+                    {
+                        get: () => config.primary_color || "#667eea",
+                        set: (value) => {
+                            config.primary_color = value;
+                            if (window.elementSdk) {
+                                window.elementSdk.setConfig({ primary_color: value });
+                            }
                         }
-                    ];
-
-                    for (const account of seedAccounts) {
-                        // Use the userId as the document ID
-                        await setDoc(doc(accountsRef, account.userId), account);
                     }
-                    console.log("Database seeded successfully.");
-                } else if (currentUserEmail === ADMIN_EMAIL) {
-                    // If the user is admin, ensure their profile exists and is updated
-                    await setDoc(adminDocRef, {
-                        name: "Admin Master Wallet",
-                        email: ADMIN_EMAIL,
-                        userId: currentUserId 
-                    }, { merge: true });
+                ],
+                borderables: [],
+                fontEditable: undefined,
+                fontSizeable: undefined
+            }),
+            mapToEditPanelValues: (config) => new Map([
+                ["platform_name", config.platform_name || defaultConfig.platform_name],
+                ["currency_symbol", config.currency_symbol || defaultConfig.currency_symbol],
+                ["exchange_rate", config.exchange_rate || defaultConfig.exchange_rate]
+            ])
+        };
+
+        // Initialize Element SDK
+        async function initializeElementSDK() {
+            try {
+                if (window.elementSdk) {
+                    await window.elementSdk.init(element);
                 }
             } catch (error) {
-                console.error("Seeding or Admin Doc Update Failed:", error);
+                console.error("Failed to initialize Element SDK:", error);
             }
         }
 
-        // --- View Logic ---
-        
-        function setupAdminView(currentUserId) {
-            userViewEl.style.display = 'none';
-            adminViewEl.style.display = 'block';
+        // Utility functions
+        function generateTransactionId() {
+            return 'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
 
-            document.getElementById('admin-user-id').textContent = currentUserId;
+        function formatCurrency(amount, symbol = 'BVN') {
+            return `${amount.toFixed(2)} ${symbol}`;
+        }
 
-            // Listen for all accounts in real-time
-            const accountsRef = getAccountCollectionRef();
-            onSnapshot(accountsRef, (snapshot) => {
-                const accountsData = [];
-                snapshot.forEach(doc => {
-                    accountsData.push({ id: doc.id, ...doc.data() });
+        function formatNaira(amount) {
+            const config = window.elementSdk?.config || defaultConfig;
+            const rate = parseFloat(config.exchange_rate || defaultConfig.exchange_rate);
+            return `₦${(amount * rate).toLocaleString()}`;
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
+
+        function updateBalanceDisplay() {
+            if (!currentUser) return;
+            
+            const config = window.elementSdk?.config || defaultConfig;
+            const symbol = config.currency_symbol || defaultConfig.currency_symbol;
+            
+            document.getElementById('balance-amount').textContent = formatCurrency(userBalance, symbol);
+            document.getElementById('balance-naira').textContent = formatNaira(userBalance);
+        }
+
+        // Chart functions
+        function drawPriceChart() {
+            const canvas = document.getElementById('price-chart');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * 2; // For high DPI
+            canvas.height = 300 * 2;
+            ctx.scale(2, 2);
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (priceHistory.length < 2) {
+                // Draw placeholder
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Price history will appear here', canvas.width / 4, canvas.height / 4);
+                return;
+            }
+            
+            const padding = 40;
+            const chartWidth = canvas.width / 2 - padding * 2;
+            const chartHeight = canvas.height / 2 - padding * 2;
+            
+            // Find min and max prices
+            const prices = priceHistory.map(p => p.rate);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const priceRange = maxPrice - minPrice || 1;
+            
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(padding + chartWidth, y);
+                ctx.stroke();
+            }
+            
+            // Draw price line
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            priceHistory.forEach((point, index) => {
+                const x = padding + (chartWidth / (priceHistory.length - 1)) * index;
+                const y = padding + chartHeight - ((point.rate - minPrice) / priceRange) * chartHeight;
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Draw points
+            ctx.fillStyle = '#4CAF50';
+            priceHistory.forEach((point, index) => {
+                const x = padding + (chartWidth / (priceHistory.length - 1)) * index;
+                const y = padding + chartHeight - ((point.rate - minPrice) / priceRange) * chartHeight;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            
+            // Draw labels
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            
+            // Y-axis labels (prices)
+            for (let i = 0; i <= 5; i++) {
+                const price = minPrice + (priceRange / 5) * (5 - i);
+                const y = padding + (chartHeight / 5) * i;
+                ctx.fillText(`₦${price.toFixed(0)}`, padding - 10, y + 4);
+            }
+            
+            // Current price indicator
+            const currentY = padding + chartHeight - ((currentRate - minPrice) / priceRange) * chartHeight;
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(padding, currentY);
+            ctx.lineTo(padding + chartWidth, currentY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Current price label
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Current: ₦${currentRate}`, padding + 10, currentY - 10);
+        }
+
+        // Admin functions
+        async function loadCurrentRate() {
+            try {
+                const rateDoc = await db.collection('settings').doc('exchange_rate').get();
+                if (rateDoc.exists) {
+                    currentRate = rateDoc.data().rate || 1000;
+                } else {
+                    // Initialize rate document
+                    await db.collection('settings').doc('exchange_rate').set({
+                        rate: 1000,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedBy: 'system'
+                    });
+                }
+                
+                // Update displays
+                document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
+                if (window.elementSdk) {
+                    await window.elementSdk.setConfig({ exchange_rate: currentRate.toString() });
+                }
+            } catch (error) {
+                console.error('Error loading current rate:', error);
+            }
+        }
+
+        async function loadPriceHistory() {
+            try {
+                const historyRef = db.collection('price_history')
+                    .orderBy('timestamp', 'desc')
+                    .limit(30);
+                
+                const snapshot = await historyRef.get();
+                priceHistory = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    timestamp: doc.data().timestamp?.toDate() || new Date()
+                })).reverse(); // Reverse to show chronological order
+                
+                drawPriceChart();
+            } catch (error) {
+                console.error('Error loading price history:', error);
+            }
+        }
+
+        async function updateExchangeRate(newRate) {
+            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+                showNotification('Unauthorized: Admin access required', 'error');
+                return false;
+            }
+            
+            const updateBtn = document.getElementById('update-rate-text');
+            const loadingSpinner = document.getElementById('update-rate-loading');
+            
+            updateBtn.textContent = 'Updating...';
+            loadingSpinner.classList.remove('hidden');
+            
+            try {
+                const rateData = {
+                    rate: parseFloat(newRate),
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: currentUser.email
+                };
+                
+                // Update current rate
+                await db.collection('settings').doc('exchange_rate').set(rateData);
+                
+                // Add to price history
+                await db.collection('price_history').add({
+                    rate: parseFloat(newRate),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: currentUser.email
                 });
-                renderAdminAccounts(accountsData);
-            }, (error) => {
-                console.error("Admin Snapshot Error:", error);
-                adminAccountListEl.innerHTML = `<p style="color: var(--color-danger);">Error loading accounts: ${error.message}</p>`;
+                
+                currentRate = parseFloat(newRate);
+                
+                // Update displays
+                document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
+                document.getElementById('new-rate').value = '';
+                
+                // Update Element SDK config
+                if (window.elementSdk) {
+                    await window.elementSdk.setConfig({ exchange_rate: newRate.toString() });
+                }
+                
+                // Reload price history and redraw chart
+                await loadPriceHistory();
+                updateBalanceDisplay();
+                
+                showNotification(`Exchange rate updated to ₦${currentRate.toLocaleString()} per BVN`);
+                return true;
+            } catch (error) {
+                console.error('Error updating exchange rate:', error);
+                showNotification('Failed to update exchange rate', 'error');
+                return false;
+            } finally {
+                updateBtn.textContent = 'Update Rate';
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        // Firebase Auth functions
+        function setupAuthStateListener() {
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('app-section').classList.remove('hidden');
+                    document.getElementById('user-info').textContent = `Wallet: ${user.email}`;
+                    
+                    // Show admin controls if user is admin
+                    if (user.email === ADMIN_EMAIL) {
+                        document.getElementById('admin-section').classList.remove('hidden');
+                    } else {
+                        document.getElementById('admin-section').classList.add('hidden');
+                    }
+                    
+                    await initializeUserData();
+                    await loadUserBalance();
+                    await loadTransactions();
+                    await loadCurrentRate();
+                    await loadPriceHistory();
+                    
+                    showNotification(`Welcome back, ${user.email}!`);
+                } else {
+                    currentUser = null;
+                    document.getElementById('auth-section').classList.remove('hidden');
+                    document.getElementById('app-section').classList.add('hidden');
+                    document.getElementById('admin-section').classList.add('hidden');
+                    userBalance = 0;
+                    transactions = [];
+                }
             });
         }
 
-        function renderAdminAccounts(accounts) {
-            adminAccountListEl.innerHTML = '';
+        async function signInWithGoogle() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                console.error('Sign in error:', error);
+                showNotification('Sign in failed. Please try again.', 'error');
+            }
+        }
+
+        async function signOut() {
+            try {
+                await auth.signOut();
+                showNotification('Signed out successfully');
+            } catch (error) {
+                console.error('Sign out error:', error);
+                showNotification('Sign out failed', 'error');
+            }
+        }
+
+        // Firestore functions
+        async function initializeUserData() {
+            if (!currentUser) return;
             
-            if (accounts.length === 0) {
-                adminEmptyStateEl.style.display = 'block';
+            try {
+                const userRef = db.collection('users').doc(currentUser.uid);
+                const userDoc = await userRef.get();
+                
+                if (!userDoc.exists) {
+                    // Create new user document
+                    await userRef.set({
+                        email: currentUser.email,
+                        balance: currentUser.email === BANKER_EMAIL ? 999999999 : 0,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    // Update last active
+                    await userRef.update({
+                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (error) {
+                console.error('Error initializing user data:', error);
+            }
+        }
+
+        async function loadUserBalance() {
+            if (!currentUser) return;
+            
+            try {
+                const userRef = db.collection('users').doc(currentUser.uid);
+                const userDoc = await userRef.get();
+                
+                if (userDoc.exists) {
+                    userBalance = userDoc.data().balance || 0;
+                    updateBalanceDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading balance:', error);
+            }
+        }
+
+        async function loadTransactions() {
+            if (!currentUser) return;
+            
+            try {
+                const transactionsRef = db.collection('transactions')
+                    .where('participants', 'array-contains', currentUser.email)
+                    .orderBy('timestamp', 'desc')
+                    .limit(50);
+                
+                const snapshot = await transactionsRef.get();
+                transactions = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                updateTransactionHistory();
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+                document.getElementById('transaction-list').innerHTML = 
+                    '<div class="empty-state"><p>Error loading transactions</p></div>';
+            }
+        }
+
+        function updateTransactionHistory() {
+            const transactionList = document.getElementById('transaction-list');
+            
+            if (transactions.length === 0) {
+                transactionList.innerHTML = '<div class="empty-state"><p>No transactions yet</p></div>';
                 return;
             }
-            adminEmptyStateEl.style.display = 'none';
 
-            // Sort by BVN balance descending
-            accounts.sort((a, b) => b.balance - a.balance); 
+            const config = window.elementSdk?.config || defaultConfig;
+            const symbol = config.currency_symbol || defaultConfig.currency_symbol;
 
-            accounts.forEach(account => {
-                const isCurrentUser = account.userId === userId;
-                const balanceClass = account.balance < 0 ? 'text-negative' : 'text-positive';
-                const balanceDisplay = formatBVN(account.balance);
-                const ngnDisplay = formatNaira(account.balance);
-
-                const accountEl = document.createElement('div');
-                accountEl.className = `account-item ${isCurrentUser ? 'admin-self' : ''}`;
+            transactionList.innerHTML = transactions.map(tx => {
+                const isReceived = tx.to_email === currentUser.email;
+                const otherParty = isReceived ? tx.from_email : tx.to_email;
+                const date = tx.timestamp ? new Date(tx.timestamp.toDate()).toLocaleString() : 'Unknown';
                 
-                accountEl.innerHTML = `
-                    <div class="account-details">
-                        <p class="account-name">${account.name} ${isCurrentUser ? '(YOU / ADMIN)' : ''}</p>
-                        <p class="account-uid">UID: ${account.userId}</p>
-                        <p style="font-size: 0.85rem; color: var(--color-text-light); margin-top: 2px;">${account.email}</p>
-                    </div>
-                    <div class="account-balance-display">
-                        <p class="bvn ${balanceClass}">${balanceDisplay}</p>
-                        <p style="font-size: 0.8rem; color: var(--color-text-light);">${ngnDisplay}</p>
+                return `
+                    <div class="transaction-item">
+                        <div class="transaction-header">
+                            <div>
+                                <div class="transaction-amount ${isReceived ? 'amount-positive' : 'amount-negative'}">
+                                    ${isReceived ? '+' : '-'}${formatCurrency(tx.amount, symbol)}
+                                </div>
+                                <div class="transaction-details">
+                                    ${isReceived ? 'From' : 'To'}: ${otherParty}
+                                </div>
+                                <div class="transaction-date">${date}</div>
+                            </div>
+                            <div class="transaction-right">
+                                <div class="status-badge status-${tx.status}">
+                                    ${tx.status}
+                                </div>
+                                <div style="margin-top: 5px; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+                                    ${formatNaira(tx.amount)}
+                                </div>
+                                <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.5);">
+                                    ID: ${tx.transaction_id.slice(-8)}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
-                adminAccountListEl.appendChild(accountEl);
-            });
+            }).join('');
         }
 
-        // --- User View Logic ---
-
-        let userAccountId = null; 
-
-        async function setupUserView(currentUserId, currentUserEmail) {
-            adminViewEl.style.display = 'none';
-            userViewEl.style.display = 'block';
-
-            userAccountId = currentUserId;
+        async function createTransaction(toEmail, amount) {
+            if (isLoading || !currentUser) return false;
             
-            document.getElementById('user-id').textContent = userAccountId;
-
-            // Admin is seeded with a balance in seedDatabase. Non-admin users need a doc too.
-            if (!isAdmin) {
-                 const accountsRef = getAccountCollectionRef();
-                 await setDoc(doc(accountsRef, userAccountId), {
-                    name: `BVN User ${currentUserId.substring(0, 4)}`,
-                    email: currentUserEmail || 'Anonymous User',
-                    balance: 0.00,
-                    userId: currentUserId
-                 }, { merge: true });
-            }
-
-            // Set up real-time listener for the user's specific account
-            const accountDocRef = doc(getAccountCollectionRef(), userAccountId);
+            isLoading = true;
+            const sendBtn = document.getElementById('send-btn-text');
+            const loadingSpinner = document.getElementById('send-loading');
             
-            onSnapshot(accountDocRef, (docSnapshot) => {
-                if (docSnapshot.exists()) {
-                    const data = docSnapshot.data();
-                    document.getElementById('user-account-name').textContent = data.name;
-                    
-                    const balance = data.balance || 0.00;
-                    const balanceClass = balance < 0 ? 'text-negative' : 'text-positive';
-                    
-                    accountBalanceBvnEl.textContent = formatBVN(balance);
-                    accountBalanceBvnEl.className = `balance-display text-bvn ${balanceClass}`;
-                    
-                    accountBalanceNgnEl.textContent = formatNaira(balance);
-                    accountBalanceNgnEl.className = `text-ngn ${balanceClass}`;
+            sendBtn.textContent = 'Processing...';
+            loadingSpinner.classList.remove('hidden');
+
+            try {
+                // Check if recipient exists, if not create them
+                const recipientQuery = await db.collection('users').where('email', '==', toEmail).get();
+                let recipientId = null;
+                
+                if (recipientQuery.empty) {
+                    // Create new user for recipient
+                    const newUserRef = db.collection('users').doc();
+                    await newUserRef.set({
+                        email: toEmail,
+                        balance: 0,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    recipientId = newUserRef.id;
                 } else {
-                    console.error("User account document not found. Account ID:", userAccountId);
-                    accountBalanceBvnEl.textContent = "Account Not Found";
-                    accountBalanceBvnEl.className = 'balance-display text-bvn text-negative';
-                    accountBalanceNgnEl.textContent = "₦0.00";
-                    accountBalanceNgnEl.className = 'text-ngn text-negative';
+                    recipientId = recipientQuery.docs[0].id;
                 }
-            }, (error) => {
-                console.error("User Snapshot Error:", error);
-                displayMessage(errorMessageEl, `Live balance error: ${error.message}`, 'error');
-            });
 
-            // Set up event listeners for transactions
-            depositBtn.addEventListener('click', () => handleTransaction('deposit'));
-            withdrawBtn.addEventListener('click', () => handleTransaction('withdraw'));
+                const transaction = {
+                    transaction_id: generateTransactionId(),
+                    from_email: currentUser.email,
+                    to_email: toEmail,
+                    amount: parseFloat(amount),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'completed',
+                    type: 'transfer',
+                    participants: [currentUser.email, toEmail]
+                };
+
+                // Use Firestore transaction to ensure consistency
+                await db.runTransaction(async (firestoreTransaction) => {
+                    const senderRef = db.collection('users').doc(currentUser.uid);
+                    const recipientRef = db.collection('users').doc(recipientId);
+                    
+                    const senderDoc = await firestoreTransaction.get(senderRef);
+                    const recipientDoc = await firestoreTransaction.get(recipientRef);
+                    
+                    const senderBalance = senderDoc.data().balance || 0;
+                    const recipientBalance = recipientDoc.data().balance || 0;
+                    
+                    // Check balance (except for banker)
+                    if (currentUser.email !== BANKER_EMAIL && senderBalance < parseFloat(amount)) {
+                        throw new Error('Insufficient balance');
+                    }
+                    
+                    // Update balances
+                    const newSenderBalance = currentUser.email === BANKER_EMAIL ? 
+                        senderBalance : senderBalance - parseFloat(amount);
+                    const newRecipientBalance = recipientBalance + parseFloat(amount);
+                    
+                    firestoreTransaction.update(senderRef, { balance: newSenderBalance });
+                    firestoreTransaction.update(recipientRef, { balance: newRecipientBalance });
+                    
+                    // Create transaction record
+                    const transactionRef = db.collection('transactions').doc();
+                    firestoreTransaction.set(transactionRef, transaction);
+                });
+
+                // Update local balance and reload data
+                await loadUserBalance();
+                await loadTransactions();
+                
+                showNotification(`Successfully sent ${formatCurrency(amount, 'BVN')} to ${toEmail}!`);
+                document.getElementById('transfer-form').reset();
+                
+                return true;
+            } catch (error) {
+                console.error('Transaction error:', error);
+                showNotification(error.message || 'Transaction failed. Please try again.', 'error');
+                return false;
+            } finally {
+                isLoading = false;
+                sendBtn.textContent = 'Send BVN';
+                loadingSpinner.classList.add('hidden');
+            }
         }
 
-        // --- Transaction Logic (Atomic) ---
-        
-        async function handleTransaction(type) {
-            const amount = parseFloat(transactionAmountEl.value);
+        // Event listeners
+        document.getElementById('google-signin-btn').addEventListener('click', signInWithGoogle);
+        document.getElementById('logout-btn').addEventListener('click', signOut);
+
+        // Admin event listeners
+        document.getElementById('update-rate-btn').addEventListener('click', async function() {
+            const newRate = document.getElementById('new-rate').value;
             
-            errorMessageEl.style.display = 'none';
-            transactionFeedbackEl.style.display = 'none';
-            
-            if (isNaN(amount) || amount <= 0) {
-                displayMessage(errorMessageEl, 'Please enter a valid amount greater than 0.00 BVN.', 'error');
+            if (!newRate || parseFloat(newRate) <= 0) {
+                showNotification('Please enter a valid rate', 'error');
                 return;
             }
-
-            setLoading(true);
-
-            const accountsRef = getAccountCollectionRef();
-            const accountDocRef = doc(accountsRef, userAccountId);
             
-            try {
-                // RUN TRANSACTION: Guarantees atomicity and prevents race conditions
-                await runTransaction(db, async (transaction) => {
-                    const docSnapshot = await transaction.get(accountDocRef);
+            await updateExchangeRate(newRate);
+        });
 
-                    if (!docSnapshot.exists()) {
-                        throw new Error("Account does not exist!");
-                    }
-
-                    const currentBalance = docSnapshot.data().balance || 0;
-                    let newBalance;
-
-                    if (type === 'deposit') {
-                        newBalance = currentBalance + amount;
-                    } else if (type === 'withdraw') {
-                        newBalance = currentBalance - amount;
-
-                        // CRITICAL CHECK: Firestore transaction ensures this is the absolute latest balance
-                        if (newBalance < 0) {
-                            throw new Error(`Insufficient Funds: Attempted to withdraw ${formatBVN(amount)}, but account balance is only ${formatBVN(currentBalance)}.`);
-                        }
-                    }
-
-                    // Perform the update within the transaction
-                    transaction.update(accountDocRef, { balance: parseFloat(newBalance.toFixed(2)) });
-                });
-
-                transactionAmountEl.value = ''; // Clear input on success
-                setLoading(false);
-                const actionText = type === 'deposit' ? 'Deposited' : 'Withdrew';
-                displayMessage(transactionFeedbackEl, `${actionText} ${formatBVN(amount)} successfully! New balance will update shortly.`, 'success');
+        document.getElementById('transfer-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            } catch (error) {
-                console.error("Transaction failed:", error);
-
-                let displayMessageText = "Transaction failed. Please try again.";
-                
-                if (error.message.includes("Insufficient Funds")) {
-                    displayMessageText = error.message; // Use the specific error message
-                } else if (error instanceof Error) {
-                    displayMessageText = `Transaction error: ${error.message}`;
-                } else {
-                    displayMessageText = error;
-                }
-                
-                setLoading(false);
-                displayMessage(errorMessageEl, displayMessageText, 'error');
+            const recipientEmail = document.getElementById('recipient-email').value.trim();
+            const amount = parseFloat(document.getElementById('transfer-amount').value);
+            
+            if (!recipientEmail || !recipientEmail.includes('@')) {
+                showNotification('Please enter a valid recipient email.', 'error');
+                return;
             }
-        }
-
-
-        // --- Initialization Function ---
-        async function initializeBitVen() {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // 1. Authenticate User
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                // 2. Set up Auth State Listener
-                onAuthStateChanged(auth, async (user) => {
-                    loadingStateEl.style.display = 'none';
-                    if (user) {
-                        userId = user.uid;
-                        const userEmail = user.email || '';
-                        
-                        isAdmin = userEmail === ADMIN_EMAIL;
-                        
-                        // Seed database before setting up views
-                        await seedDatabase(userId, userEmail);
-
-                        authStatusEl.textContent = isAdmin 
-                            ? `Signed in as ADMIN: ${userEmail}` 
-                            : `Signed in as BVN User.`;
-                        authStatusEl.style.color = isAdmin ? '#28a745' : '#007bff';
-
-                        if (isAdmin) {
-                            setupAdminView(userId);
-                        } else {
-                            setupUserView(userId, userEmail);
-                        }
-                    } else {
-                        authStatusEl.textContent = 'Authentication required.';
-                        authStatusEl.style.color = '#dc3545';
-                        userViewEl.style.display = 'none';
-                        adminViewEl.style.display = 'none';
-                    }
-                });
-
-            } catch (error) {
-                console.error("Initialization Error:", error);
-                loadingStateEl.style.display = 'none';
-                authStatusEl.textContent = `CRITICAL ERROR: ${error.message}`;
-                authStatusEl.style.color = '#dc3545';
+            
+            if (!amount || amount <= 0) {
+                showNotification('Please enter a valid amount.', 'error');
+                return;
             }
-        }
+            
+            if (recipientEmail === currentUser.email) {
+                showNotification('You cannot send BVN to yourself.', 'error');
+                return;
+            }
+            
+            if (currentUser.email !== BANKER_EMAIL && amount > userBalance) {
+                showNotification('Insufficient balance.', 'error');
+                return;
+            }
+            
+            await createTransaction(recipientEmail, amount);
+        });
 
-        window.onload = initializeBitVen;
+        // Initialize app
+        setupAuthStateListener();
+        initializeElementSDK();
     </script>
-</body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa2017c1e13302',t:'MTc2MDY0NDY0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
