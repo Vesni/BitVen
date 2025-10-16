@@ -458,7 +458,7 @@
    </div>
   </div>
   <script>
-        // Firebase Configuration - Using a working demo config
+        // Firebase Configuration - Replace with your actual config
         const firebaseConfig = {
             apiKey: "AIzaSyDdVgKwhZl-aNLqjlMOTejjbqujBiH6VkE",
             authDomain: "bitven-6d42c.firebaseapp.com",
@@ -490,9 +490,9 @@
 
         // Admin and Banker accounts
         const BANKER_EMAIL = "lanushomeappliances@gmail.com";
-        const ADMIN_EMAIL = "lanushomeappliances@gmail.com"; // Same as banker for now
+        const ADMIN_EMAIL = "lanushomeappliances@gmail.com";
 
-        // Configuration management (without Element SDK)
+        // Configuration management
         let currentConfig = { ...defaultConfig };
         
         function updateDisplay() {
@@ -583,7 +583,7 @@
             
             // Find min and max prices
             const prices = priceHistory.map(p => p.rate);
-            const minPrice = Math.min(...prices) * 0.95; // Add some padding
+            const minPrice = Math.min(...prices) * 0.95;
             const maxPrice = Math.max(...prices) * 1.05;
             const priceRange = maxPrice - minPrice || 1;
             
@@ -663,104 +663,15 @@
             }
         }
 
-        // Admin functions (Demo mode - no Firebase required)
-        function loadCurrentRate() {
-            // Demo mode - use local storage or default
-            const savedRate = localStorage.getItem('bvn_rate');
-            currentRate = savedRate ? parseFloat(savedRate) : 1000;
-            
-            // Update displays
-            document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
-            currentConfig.exchange_rate = currentRate.toString();
-            updateDisplay();
-        }
-
-        function loadPriceHistory() {
-            // Demo mode - create sample price history
-            const savedHistory = localStorage.getItem('bvn_price_history');
-            if (savedHistory) {
-                priceHistory = JSON.parse(savedHistory);
-            } else {
-                // Create initial sample data
-                const now = Date.now();
-                priceHistory = [
-                    { rate: 950, timestamp: new Date(now - 6 * 24 * 60 * 60 * 1000) },
-                    { rate: 980, timestamp: new Date(now - 5 * 24 * 60 * 60 * 1000) },
-                    { rate: 1020, timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000) },
-                    { rate: 1000, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000) },
-                    { rate: 1050, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000) },
-                    { rate: 1030, timestamp: new Date(now - 1 * 24 * 60 * 60 * 1000) },
-                    { rate: currentRate, timestamp: new Date(now) }
-                ];
-                localStorage.setItem('bvn_price_history', JSON.stringify(priceHistory));
-            }
-            
-            drawPriceChart();
-        }
-
-        function updateExchangeRate(newRate) {
-            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-                showNotification('Unauthorized: Admin access required', 'error');
-                return false;
-            }
-            
-            const updateBtn = document.getElementById('update-rate-text');
-            const loadingSpinner = document.getElementById('update-rate-loading');
-            
-            updateBtn.textContent = 'Updating...';
-            loadingSpinner.classList.remove('hidden');
-            
-            try {
-                currentRate = parseFloat(newRate);
-                
-                // Save to localStorage
-                localStorage.setItem('bvn_rate', currentRate.toString());
-                
-                // Add to price history
-                priceHistory.push({
-                    rate: currentRate,
-                    timestamp: new Date(),
-                    updatedBy: currentUser.email
-                });
-                
-                // Keep only last 30 entries
-                if (priceHistory.length > 30) {
-                    priceHistory = priceHistory.slice(-30);
-                }
-                
-                localStorage.setItem('bvn_price_history', JSON.stringify(priceHistory));
-                
-                // Update displays
-                document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
-                document.getElementById('new-rate').value = '';
-                
-                currentConfig.exchange_rate = newRate.toString();
-                updateDisplay();
-                
-                // Redraw chart
-                drawPriceChart();
-                updateBalanceDisplay();
-                
-                showNotification(`Exchange rate updated to ₦${currentRate.toLocaleString()} per BVN`);
-                return true;
-            } catch (error) {
-                console.error('Error updating exchange rate:', error);
-                showNotification('Failed to update exchange rate', 'error');
-                return false;
-            } finally {
-                updateBtn.textContent = 'Update Rate';
-                loadingSpinner.classList.add('hidden');
-            }
-        }
-
-        // Demo Auth functions (no Firebase required)
+        // Real Firebase Auth functions
         function setupAuthStateListener() {
-            // Check if user is already signed in (demo mode)
-            const savedUser = localStorage.getItem('demo_user');
-            if (savedUser) {
-                const user = JSON.parse(savedUser);
-                handleUserSignIn(user);
-            }
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    handleUserSignIn(user);
+                } else {
+                    handleUserSignOut();
+                }
+            });
         }
 
         function handleUserSignIn(user) {
@@ -785,102 +696,201 @@
             showNotification(`Welcome back, ${user.email}!`);
         }
 
-        function signInWithGoogle() {
-            // Demo mode - simulate Google sign in
-            const demoUser = {
-                email: ADMIN_EMAIL, // Default to admin for demo
-                uid: 'demo_user_123',
-                displayName: 'Demo Admin'
-            };
-            
-            localStorage.setItem('demo_user', JSON.stringify(demoUser));
-            handleUserSignIn(demoUser);
-        }
-
-        function signOut() {
-            localStorage.removeItem('demo_user');
+        function handleUserSignOut() {
             currentUser = null;
             document.getElementById('auth-section').classList.remove('hidden');
             document.getElementById('app-section').classList.add('hidden');
             document.getElementById('admin-section').classList.add('hidden');
             userBalance = 0;
             transactions = [];
-            showNotification('Signed out successfully');
         }
 
-        // Demo data functions (localStorage based)
-        function initializeUserData() {
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            // Force account selection every time
+            provider.setCustomParameters({
+                prompt: 'select_account'
+            });
+            
+            // Add required scopes
+            provider.addScope('email');
+            provider.addScope('profile');
+            
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    // User signed in successfully
+                    console.log('User signed in:', result.user.email);
+                })
+                .catch((error) => {
+                    console.error('Sign-in error:', error);
+                    showNotification('Sign-in failed. Please try again.', 'error');
+                });
+        }
+
+        function signOut() {
+            auth.signOut()
+                .then(() => {
+                    showNotification('Signed out successfully');
+                })
+                .catch((error) => {
+                    console.error('Sign-out error:', error);
+                    showNotification('Sign-out failed', 'error');
+                });
+        }
+
+        // Firebase data functions with localStorage fallback
+        async function initializeUserData() {
             if (!currentUser) return;
             
-            const userKey = `user_${currentUser.uid}`;
-            const userData = localStorage.getItem(userKey);
-            
-            if (!userData) {
-                // Create new user data
-                const newUserData = {
-                    email: currentUser.email,
-                    balance: currentUser.email === BANKER_EMAIL ? 999999999 : 100, // Give demo users 100 BVN
-                    createdAt: new Date().toISOString(),
-                    lastActive: new Date().toISOString()
-                };
-                localStorage.setItem(userKey, JSON.stringify(newUserData));
-            } else {
-                // Update last active
-                const user = JSON.parse(userData);
-                user.lastActive = new Date().toISOString();
-                localStorage.setItem(userKey, JSON.stringify(user));
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (!userDoc.exists) {
+                    // Create new user
+                    const newUserData = {
+                        email: currentUser.email,
+                        balance: currentUser.email === BANKER_EMAIL ? 999999999 : 100,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('users').doc(currentUser.uid).set(newUserData);
+                } else {
+                    // Update last active
+                    await db.collection('users').doc(currentUser.uid).update({
+                        lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (error) {
+                console.error('Error initializing user data:', error);
+                // Fallback to localStorage
+                const userKey = `user_${currentUser.uid}`;
+                const userData = localStorage.getItem(userKey);
+                
+                if (!userData) {
+                    const newUserData = {
+                        email: currentUser.email,
+                        balance: currentUser.email === BANKER_EMAIL ? 999999999 : 100,
+                        createdAt: new Date().toISOString(),
+                        lastActive: new Date().toISOString()
+                    };
+                    localStorage.setItem(userKey, JSON.stringify(newUserData));
+                }
             }
         }
 
-        function loadUserBalance() {
+        async function loadUserBalance() {
             if (!currentUser) return;
             
-            const userKey = `user_${currentUser.uid}`;
-            const userData = localStorage.getItem(userKey);
-            
-            if (userData) {
-                const user = JSON.parse(userData);
-                userBalance = user.balance || 0;
-                updateBalanceDisplay();
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (userDoc.exists) {
+                    userBalance = userDoc.data().balance || 0;
+                    updateBalanceDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading balance:', error);
+                // Fallback to localStorage
+                const userKey = `user_${currentUser.uid}`;
+                const userData = localStorage.getItem(userKey);
+                
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    userBalance = user.balance || 0;
+                    updateBalanceDisplay();
+                }
             }
         }
 
-        function loadTransactions() {
+        async function loadTransactions() {
             if (!currentUser) return;
             
-            const transactionKey = `transactions_${currentUser.email}`;
-            const savedTransactions = localStorage.getItem(transactionKey);
-            
-            if (savedTransactions) {
-                transactions = JSON.parse(savedTransactions);
-            } else {
-                // Create sample transactions for demo
-                transactions = [
-                    {
-                        id: 'demo_1',
-                        transaction_id: 'txn_demo_001',
-                        from_email: 'demo@example.com',
-                        to_email: currentUser.email,
-                        amount: 50,
-                        timestamp: { toDate: () => new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-                        status: 'completed',
-                        type: 'transfer'
-                    },
-                    {
-                        id: 'demo_2',
-                        transaction_id: 'txn_demo_002',
-                        from_email: currentUser.email,
-                        to_email: 'recipient@example.com',
-                        amount: 25,
-                        timestamp: { toDate: () => new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
-                        status: 'completed',
-                        type: 'transfer'
-                    }
-                ];
-                localStorage.setItem(transactionKey, JSON.stringify(transactions));
+            try {
+                const transactionsQuery = await db.collection('transactions')
+                    .where('participants', 'array-contains', currentUser.email)
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .get();
+                
+                transactions = transactionsQuery.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                updateTransactionHistory();
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+                // Fallback to localStorage
+                const transactionKey = `transactions_${currentUser.email}`;
+                const savedTransactions = localStorage.getItem(transactionKey);
+                
+                if (savedTransactions) {
+                    transactions = JSON.parse(savedTransactions);
+                } else {
+                    transactions = [];
+                }
+                
+                updateTransactionHistory();
+            }
+        }
+
+        async function loadCurrentRate() {
+            try {
+                const rateDoc = await db.collection('exchange_rates').doc('current').get();
+                
+                if (rateDoc.exists) {
+                    currentRate = rateDoc.data().rate || 1000;
+                } else {
+                    currentRate = 1000;
+                }
+            } catch (error) {
+                console.error('Error loading rate:', error);
+                // Fallback to localStorage
+                const savedRate = localStorage.getItem('bvn_rate');
+                currentRate = savedRate ? parseFloat(savedRate) : 1000;
             }
             
-            updateTransactionHistory();
+            // Update displays
+            document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
+            currentConfig.exchange_rate = currentRate.toString();
+            updateDisplay();
+        }
+
+        async function loadPriceHistory() {
+            try {
+                const historyQuery = await db.collection('price_history')
+                    .orderBy('timestamp', 'desc')
+                    .limit(30)
+                    .get();
+                
+                priceHistory = historyQuery.docs.map(doc => ({
+                    ...doc.data(),
+                    timestamp: doc.data().timestamp.toDate()
+                })).reverse();
+            } catch (error) {
+                console.error('Error loading price history:', error);
+                // Fallback to localStorage or create sample data
+                const savedHistory = localStorage.getItem('bvn_price_history');
+                if (savedHistory) {
+                    priceHistory = JSON.parse(savedHistory);
+                } else {
+                    // Create sample data
+                    const now = Date.now();
+                    priceHistory = [
+                        { rate: 950, timestamp: new Date(now - 6 * 24 * 60 * 60 * 1000) },
+                        { rate: 980, timestamp: new Date(now - 5 * 24 * 60 * 60 * 1000) },
+                        { rate: 1020, timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000) },
+                        { rate: 1000, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000) },
+                        { rate: 1050, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000) },
+                        { rate: 1030, timestamp: new Date(now - 1 * 24 * 60 * 60 * 1000) },
+                        { rate: currentRate, timestamp: new Date(now) }
+                    ];
+                }
+            }
+            
+            drawPriceChart();
         }
 
         function updateTransactionHistory() {
@@ -896,7 +906,7 @@
             transactionList.innerHTML = transactions.map(tx => {
                 const isReceived = tx.to_email === currentUser.email;
                 const otherParty = isReceived ? tx.from_email : tx.to_email;
-                const date = tx.timestamp ? new Date(tx.timestamp.toDate()).toLocaleString() : 'Unknown';
+                const date = tx.timestamp ? (tx.timestamp.toDate ? tx.timestamp.toDate() : new Date(tx.timestamp)).toLocaleString() : 'Unknown';
                 
                 return `
                     <div class="transaction-item">
@@ -918,7 +928,7 @@
                                     ${formatNaira(tx.amount)}
                                 </div>
                                 <div style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.5);">
-                                    ID: ${tx.transaction_id.slice(-8)}
+                                    ID: ${tx.transaction_id ? tx.transaction_id.slice(-8) : 'N/A'}
                                 </div>
                             </div>
                         </div>
@@ -927,7 +937,78 @@
             }).join('');
         }
 
-        function createTransaction(toEmail, amount) {
+        async function updateExchangeRate(newRate) {
+            if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+                showNotification('Unauthorized: Admin access required', 'error');
+                return false;
+            }
+            
+            const updateBtn = document.getElementById('update-rate-text');
+            const loadingSpinner = document.getElementById('update-rate-loading');
+            
+            updateBtn.textContent = 'Updating...';
+            loadingSpinner.classList.remove('hidden');
+            
+            try {
+                currentRate = parseFloat(newRate);
+                
+                // Try to save to Firebase first
+                try {
+                    await db.collection('exchange_rates').doc('current').set({
+                        rate: currentRate,
+                        updatedBy: currentUser.email,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Add to price history
+                    await db.collection('price_history').add({
+                        rate: currentRate,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedBy: currentUser.email
+                    });
+                } catch (firebaseError) {
+                    console.error('Firebase error, using localStorage:', firebaseError);
+                    // Fallback to localStorage
+                    localStorage.setItem('bvn_rate', currentRate.toString());
+                    
+                    const savedHistory = JSON.parse(localStorage.getItem('bvn_price_history') || '[]');
+                    savedHistory.push({
+                        rate: currentRate,
+                        timestamp: new Date(),
+                        updatedBy: currentUser.email
+                    });
+                    
+                    if (savedHistory.length > 30) {
+                        savedHistory.splice(0, savedHistory.length - 30);
+                    }
+                    
+                    localStorage.setItem('bvn_price_history', JSON.stringify(savedHistory));
+                }
+                
+                // Update displays
+                document.getElementById('admin-current-rate').textContent = `₦${currentRate.toLocaleString()}`;
+                document.getElementById('new-rate').value = '';
+                
+                currentConfig.exchange_rate = newRate.toString();
+                updateDisplay();
+                
+                // Reload price history and redraw chart
+                await loadPriceHistory();
+                updateBalanceDisplay();
+                
+                showNotification(`Exchange rate updated to ₦${currentRate.toLocaleString()} per BVN`);
+                return true;
+            } catch (error) {
+                console.error('Error updating exchange rate:', error);
+                showNotification('Failed to update exchange rate', 'error');
+                return false;
+            } finally {
+                updateBtn.textContent = 'Update Rate';
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        async function createTransaction(toEmail, amount) {
             if (isLoading || !currentUser) return false;
             
             isLoading = true;
@@ -944,42 +1025,67 @@
                 }
 
                 const transaction = {
-                    id: generateTransactionId(),
                     transaction_id: generateTransactionId(),
                     from_email: currentUser.email,
                     to_email: toEmail,
                     amount: parseFloat(amount),
-                    timestamp: { toDate: () => new Date() },
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     status: 'completed',
                     type: 'transfer',
                     participants: [currentUser.email, toEmail]
                 };
 
-                // Update sender balance
-                const userKey = `user_${currentUser.uid}`;
-                const userData = JSON.parse(localStorage.getItem(userKey));
-                if (currentUser.email !== BANKER_EMAIL) {
-                    userData.balance -= parseFloat(amount);
-                    userBalance = userData.balance;
+                // Try Firebase transaction first
+                try {
+                    await db.runTransaction(async (firestoreTransaction) => {
+                        // Update sender balance
+                        const senderRef = db.collection('users').doc(currentUser.uid);
+                        const senderDoc = await firestoreTransaction.get(senderRef);
+                        
+                        if (senderDoc.exists && currentUser.email !== BANKER_EMAIL) {
+                            const newBalance = senderDoc.data().balance - parseFloat(amount);
+                            firestoreTransaction.update(senderRef, { balance: newBalance });
+                        }
+                        
+                        // Create transaction record
+                        const transactionRef = db.collection('transactions').doc();
+                        firestoreTransaction.set(transactionRef, transaction);
+                    });
+                    
+                    // Update local balance
+                    if (currentUser.email !== BANKER_EMAIL) {
+                        userBalance -= parseFloat(amount);
+                    }
+                } catch (firebaseError) {
+                    console.error('Firebase error, using localStorage:', firebaseError);
+                    
+                    // Fallback to localStorage
+                    const userKey = `user_${currentUser.uid}`;
+                    const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+                    
+                    if (currentUser.email !== BANKER_EMAIL) {
+                        userData.balance = (userData.balance || 0) - parseFloat(amount);
+                        userBalance = userData.balance;
+                    }
+                    
+                    localStorage.setItem(userKey, JSON.stringify(userData));
+                    
+                    // Add to transaction history
+                    const transactionKey = `transactions_${currentUser.email}`;
+                    const userTransactions = JSON.parse(localStorage.getItem(transactionKey) || '[]');
+                    
+                    const localTransaction = {
+                        ...transaction,
+                        id: generateTransactionId(),
+                        timestamp: { toDate: () => new Date() }
+                    };
+                    
+                    userTransactions.unshift(localTransaction);
+                    localStorage.setItem(transactionKey, JSON.stringify(userTransactions));
+                    
+                    transactions.unshift(localTransaction);
                 }
-                localStorage.setItem(userKey, JSON.stringify(userData));
-
-                // Add transaction to sender's history
-                const senderTransactionKey = `transactions_${currentUser.email}`;
-                const senderTransactions = JSON.parse(localStorage.getItem(senderTransactionKey) || '[]');
-                senderTransactions.unshift(transaction);
-                localStorage.setItem(senderTransactionKey, JSON.stringify(senderTransactions));
-
-                // Add transaction to recipient's history (if different)
-                if (toEmail !== currentUser.email) {
-                    const recipientTransactionKey = `transactions_${toEmail}`;
-                    const recipientTransactions = JSON.parse(localStorage.getItem(recipientTransactionKey) || '[]');
-                    recipientTransactions.unshift(transaction);
-                    localStorage.setItem(recipientTransactionKey, JSON.stringify(recipientTransactions));
-                }
-
-                // Update local data
-                transactions.unshift(transaction);
+                
                 updateBalanceDisplay();
                 updateTransactionHistory();
                 
@@ -1052,5 +1158,5 @@
             setTimeout(drawPriceChart, 100);
         });
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa2b56124d540e',t:'MTc2MDY0NTEwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa58fbf7a163a3',t:'MTc2MDY0Njk3OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
