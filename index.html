@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BitVen - Forca</title><!-- Firebase SDK -->
+  <title>BitVen - Cryptocurrency Platform</title><!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -459,7 +459,7 @@
   </div>
   <script>
         // Firebase Configuration - Replace with your actual config
-      const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
   authDomain: "bitven-6d42c.firebaseapp.com",
   projectId: "bitven-6d42c",
@@ -1019,8 +1019,10 @@
             loadingSpinner.classList.remove('hidden');
 
             try {
+                const transferAmount = parseFloat(amount);
+                
                 // Check balance (except for banker)
-                if (currentUser.email !== BANKER_EMAIL && userBalance < parseFloat(amount)) {
+                if (currentUser.email !== BANKER_EMAIL && userBalance < transferAmount) {
                     throw new Error('Insufficient balance');
                 }
 
@@ -1028,7 +1030,7 @@
                     transaction_id: generateTransactionId(),
                     from_email: currentUser.email,
                     to_email: toEmail,
-                    amount: parseFloat(amount),
+                    amount: transferAmount,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     status: 'completed',
                     type: 'transfer',
@@ -1038,13 +1040,48 @@
                 // Try Firebase transaction first
                 try {
                     await db.runTransaction(async (firestoreTransaction) => {
-                        // Update sender balance
+                        // Get sender document
                         const senderRef = db.collection('users').doc(currentUser.uid);
                         const senderDoc = await firestoreTransaction.get(senderRef);
                         
+                        // Find recipient by email
+                        const recipientQuery = await db.collection('users').where('email', '==', toEmail).get();
+                        let recipientRef = null;
+                        let recipientDoc = null;
+                        
+                        if (!recipientQuery.empty) {
+                            recipientRef = recipientQuery.docs[0].ref;
+                            recipientDoc = await firestoreTransaction.get(recipientRef);
+                        } else {
+                            // Create recipient account if doesn't exist
+                            recipientRef = db.collection('users').doc();
+                            const newRecipientData = {
+                                email: toEmail,
+                                balance: transferAmount,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                            };
+                            firestoreTransaction.set(recipientRef, newRecipientData);
+                        }
+                        
+                        // Update sender balance (except banker)
                         if (senderDoc.exists && currentUser.email !== BANKER_EMAIL) {
-                            const newBalance = senderDoc.data().balance - parseFloat(amount);
-                            firestoreTransaction.update(senderRef, { balance: newBalance });
+                            const currentSenderBalance = senderDoc.data().balance || 0;
+                            const newSenderBalance = currentSenderBalance - transferAmount;
+                            firestoreTransaction.update(senderRef, { 
+                                balance: newSenderBalance,
+                                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                        
+                        // Update recipient balance
+                        if (recipientDoc && recipientDoc.exists) {
+                            const currentRecipientBalance = recipientDoc.data().balance || 0;
+                            const newRecipientBalance = currentRecipientBalance + transferAmount;
+                            firestoreTransaction.update(recipientRef, { 
+                                balance: newRecipientBalance,
+                                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                            });
                         }
                         
                         // Create transaction record
@@ -1052,27 +1089,36 @@
                         firestoreTransaction.set(transactionRef, transaction);
                     });
                     
-                    // Update local balance
+                    // Update local balance for sender
                     if (currentUser.email !== BANKER_EMAIL) {
-                        userBalance -= parseFloat(amount);
+                        userBalance -= transferAmount;
                     }
+                    
                 } catch (firebaseError) {
                     console.error('Firebase error, using localStorage:', firebaseError);
                     
                     // Fallback to localStorage
-                    const userKey = `user_${currentUser.uid}`;
-                    const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+                    const senderKey = `user_${currentUser.uid}`;
+                    const senderData = JSON.parse(localStorage.getItem(senderKey) || '{}');
                     
+                    // Update sender balance (except banker)
                     if (currentUser.email !== BANKER_EMAIL) {
-                        userData.balance = (userData.balance || 0) - parseFloat(amount);
-                        userBalance = userData.balance;
+                        senderData.balance = (senderData.balance || 0) - transferAmount;
+                        userBalance = senderData.balance;
+                        localStorage.setItem(senderKey, JSON.stringify(senderData));
                     }
                     
-                    localStorage.setItem(userKey, JSON.stringify(userData));
+                    // Update recipient balance in localStorage
+                    const recipientKey = `user_email_${toEmail}`;
+                    const recipientData = JSON.parse(localStorage.getItem(recipientKey) || '{}');
+                    recipientData.email = toEmail;
+                    recipientData.balance = (recipientData.balance || 0) + transferAmount;
+                    recipientData.lastActive = new Date().toISOString();
+                    localStorage.setItem(recipientKey, JSON.stringify(recipientData));
                     
-                    // Add to transaction history
-                    const transactionKey = `transactions_${currentUser.email}`;
-                    const userTransactions = JSON.parse(localStorage.getItem(transactionKey) || '[]');
+                    // Add to sender's transaction history
+                    const senderTransactionKey = `transactions_${currentUser.email}`;
+                    const senderTransactions = JSON.parse(localStorage.getItem(senderTransactionKey) || '[]');
                     
                     const localTransaction = {
                         ...transaction,
@@ -1080,8 +1126,14 @@
                         timestamp: { toDate: () => new Date() }
                     };
                     
-                    userTransactions.unshift(localTransaction);
-                    localStorage.setItem(transactionKey, JSON.stringify(userTransactions));
+                    senderTransactions.unshift(localTransaction);
+                    localStorage.setItem(senderTransactionKey, JSON.stringify(senderTransactions));
+                    
+                    // Add to recipient's transaction history
+                    const recipientTransactionKey = `transactions_${toEmail}`;
+                    const recipientTransactions = JSON.parse(localStorage.getItem(recipientTransactionKey) || '[]');
+                    recipientTransactions.unshift(localTransaction);
+                    localStorage.setItem(recipientTransactionKey, JSON.stringify(recipientTransactions));
                     
                     transactions.unshift(localTransaction);
                 }
@@ -1089,7 +1141,7 @@
                 updateBalanceDisplay();
                 updateTransactionHistory();
                 
-                showNotification(`Successfully sent ${formatCurrency(amount, currentConfig.currency_symbol)} to ${toEmail}!`);
+                showNotification(`Successfully sent ${formatCurrency(transferAmount, currentConfig.currency_symbol)} to ${toEmail}!`);
                 document.getElementById('transfer-form').reset();
                 
                 return true;
@@ -1158,5 +1210,5 @@
             setTimeout(drawPriceChart, 100);
         });
     </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa58fbf7a163a3',t:'MTc2MDY0Njk3OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98fa669cf68dbd89',t:'MTc2MDY0NzUzNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
