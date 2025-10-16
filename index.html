@@ -3,129 +3,308 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen-Forca</title>
+    <title>BitVen System</title>
     <style>
-        :root {
-            --color-primary: #3b82f6;
-            --color-secondary: #10b981;
-            --color-danger: #ef4444;
-            --color-text-dark: #1f2937;
-            --color-text-light: #6b7280;
-            --color-bg-light: #f9fafb;
-            --color-bg-white: white;
-            --border-radius-lg: 1rem;
-        }
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--color-bg-light); 
-            padding: 2.5rem; 
+        /* Base Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
         }
 
         .container {
-            max-width: 1280px;
+            max-width: 1200px;
             margin: 0 auto;
+            padding: 20px;
         }
 
-        .card { 
-            background-color: var(--color-bg-white); 
-            border-radius: var(--border-radius-lg); 
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
-            padding: 24px;
+        /* Header */
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 0;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 2em;
         }
 
+        /* Card and Grid Layout */
         .grid-layout {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
+            gap: 20px;
         }
-        @media (min-width: 1024px) {
+
+        @media (min-width: 768px) {
             .grid-layout {
                 grid-template-columns: 2fr 1fr;
             }
         }
-
-        .admin-tag { 
-            background-color: var(--color-danger); 
-            color: white; 
-            padding: 0.25rem 0.75rem; 
-            border-radius: 9999px; 
-            font-size: 0.75rem; 
-            font-weight: bold; 
-            display: inline-block;
-        }
         
-        .success { color: var(--color-secondary); }
-        .danger { color: var(--color-danger); }
-        
-        .scrollable-content { 
-            max-height: 400px; 
-            overflow-y: auto; 
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
         }
 
-        /* Form and Button Styling */
-        .form-group { margin-bottom: 1rem; }
-        .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--color-text-dark); margin-bottom: 0.25rem; }
-        .form-input { 
-            display: block; 
-            width: 100%; 
-            padding: 0.5rem; 
-            border: 1px solid #d1d5db; 
-            border-radius: 0.375rem; 
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            margin-top: 0.25rem;
+        .card h2 {
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #34495e;
         }
-        
-        .button { 
-            width: 100%; 
-            padding: 0.75rem; 
-            border-radius: 0.5rem; 
-            font-weight: 600; 
-            color: white; 
-            cursor: pointer; 
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
             transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
             border: none;
         }
 
-        .button-primary { background-color: var(--color-secondary); }
-        .button-primary:hover:enabled { background-color: #059669; }
-        .button-danger { background-color: var(--color-danger); }
-        .button-danger:hover:enabled { background-color: #dc2626; }
-        .button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* Modal Styling */
-        .modal-backdrop {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background-color: rgba(0, 0, 0, 0.6); display: flex; 
-            justify-content: center; align-items: center; z-index: 50; 
+        .btn-primary:hover {
+            background-color: #2980b9;
         }
-        .modal-card { width: 90%; max-width: 400px; }
 
-        /* Table Styling */
-        .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { padding: 10px; text-align: left; border-bottom: 1px solid #f3f4f6; }
-        .table th { background-color: #f9fafb; font-size: 0.75rem; color: var(--color-text-light); text-transform: uppercase; letter-spacing: 0.05em; position: sticky; top: 0; }
-        .table tr:hover { background-color: #f9fafb; }
-        .text-truncate { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 150px; }
+        .btn-admin {
+            background-color: #e67e22;
+            border: none;
+        }
+
+        .btn-admin:hover {
+            background-color: #d35400;
+        }
+
+        .sign-in-btn {
+            background-color: #e74c3c;
+            border: none;
+            width: auto;
+            display: inline-block;
+        }
+
+        .sign-in-btn:hover {
+            background-color: #c0392b;
+        }
+
+        /* Status and Directory */
+        #auth-status, #wallet-balance, #admin-area {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        .admin-only {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #ecf0f1;
+        }
+
+        .directory-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 0;
+            list-style: none;
+        }
+
+        .directory-list li {
+            padding: 8px 0;
+            border-bottom: 1px dotted #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .directory-list li:last-child {
+            border-bottom: none;
+        }
+
+        .user-id {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            word-break: break-all;
+        }
+
+        .user-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* Transaction Log */
+        #transaction-log-list {
+            list-style: none;
+            padding: 0;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        #transaction-log-list li {
+            background-color: #ecf0f1;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        
+        .tx-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        
+        .tx-details {
+            margin-top: 5px;
+        }
+
+        .tx-type {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-right: 10px;
+            font-size: 0.8em;
+        }
+
+        .tx-payment { background-color: #3498db; color: white; }
+        .tx-fee { background-color: #e67e22; color: white; }
+        .tx-bonus { background-color: #27ae60; color: white; }
+
+        .tx-amount {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .tx-in { color: #27ae60; }
+        .tx-out { color: #e74c3c; }
+
+        /* Utility */
+        .hidden { display: none; }
+        .error { color: #e74c3c; font-weight: bold; margin-top: 10px; }
+        .status-message { padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        .status-success { background-color: #e8f9e8; border: 1px solid #27ae60; color: #27ae60; }
+        .status-error { background-color: #f9e8e8; border: 1px solid #e74c3c; color: #e74c3c; }
     </style>
 </head>
 <body>
+
+    <div class="container">
+        <header>
+            <h1>BitVen System</h1>
+        </header>
+
+        <div id="status-display" class="status-message hidden"></div>
+
+        <div class="grid-layout">
+            
+            <!-- Main Content: Send BVN, Balance, Log -->
+            <div>
+                <!-- Wallet/Balance Card -->
+                <div class="card">
+                    <h2>Wallet Status</h2>
+                    <p id="auth-status">Status: Not Authenticated</p>
+                    <p id="wallet-balance">Balance: Loading...</p>
+                    <div id="sign-in-prompt">
+                        <button class="sign-in-btn btn" onclick="signInWithGoogle()">Sign In with Google</button>
+                    </div>
+                </div>
+
+                <!-- Send BVN Card -->
+                <div class="card" id="send-bvn-card" style="display: none;">
+                    <h2>Send BitVen (BVN)</h2>
+                    <form id="send-bvn-form">
+                        <div class="form-group">
+                            <label for="recipient-id">Recipient (Email or UID):</label>
+                            <input type="text" id="recipient-id" required placeholder="user@example.com or user-UID">
+                        </div>
+                        <div class="form-group">
+                            <label for="send-amount">Amount (BVN):</label>
+                            <input type="number" id="send-amount" min="0.01" step="0.01" required placeholder="e.g., 10.00">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Send BVN</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Transaction Log Card -->
+                <div class="card">
+                    <h2>Transaction Log (Real-Time)</h2>
+                    <ul id="transaction-log-list">
+                        <!-- Transactions will be inserted here -->
+                        <li style="text-align: center; color: #7f8c8d;">Awaiting authentication...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Sidebar: Directory and Admin -->
+            <div>
+                <!-- User Directory Card -->
+                <div class="card">
+                    <h2>User Directory</h2>
+                    <ul id="directory-list" class="directory-list">
+                        <!-- User profiles will be inserted here -->
+                        <li style="text-align: center; color: #7f8c8d;">Loading profiles...</li>
+                    </ul>
+                </div>
+
+                <!-- Admin Issuance Card -->
+                <div class="card hidden" id="admin-area">
+                    <h2>Admin System Operations</h2>
+                    <p>Only the Administrator can use this feature to issue new BVN into the system.</p>
+                    <form id="issue-bvn-form" class="admin-only">
+                        <div class="form-group">
+                            <label for="issue-recipient-id">Recipient (UID):</label>
+                            <input type="text" id="issue-recipient-id" required placeholder="User UID">
+                        </div>
+                        <div class="form-group">
+                            <label for="issue-amount">Amount (BVN):</label>
+                            <input type="number" id="issue-amount" min="1" step="1" required placeholder="e.g., 1000">
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-admin">Issue New BVN (Bonus)</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        setLogLevel('Debug');
-
-        // REQUIRED ADMIN IDENTITY
-        const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
-        const EXCHANGE_RATE_NGN = 1800.00; // 1 BVN = 1800 NGN
-
-        // --- FIREBASE CONFIGURATION ---
-        // The __app_id and __initial_auth_token are provided by the hosting environment.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
-        
+        // --- MANDATORY ENVIRONMENT CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyDWSebqVunmSzmw168fDZE_ePqoJ-_jsig",
             authDomain: "bitven-6d42c.firebaseapp.com",
@@ -134,579 +313,388 @@
             messagingSenderId: "511584242303",
             appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
         };
-        
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
+        const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
+        const NETWORK_FEE = 0.01;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+
+        let app, db, auth;
         let userId = null;
-        let isAdmin = false;
-        let profiles = {};
-        let transactions = [];
-        let balanceBVN = 0;
+        let isAdminUser = false;
+        let profiles = {}; // Stores UID -> {email, name} for quick lookups
+        let isAuthReady = false;
 
-        const path = (collectionName, docId) => {
-            return docId ? 
-                doc(db, 'artifacts', appId, 'public', 'data', collectionName, docId) : 
-                collection(db, 'artifacts', appId, 'public', 'data', collectionName);
-        }
-
-        const log = (message, type = 'log') => {
-            const statusElement = document.getElementById('status-message');
-            if (statusElement) {
-                // Determine background/text colors for the status message
-                let bgColor, textColor;
-                if (type === 'error') {
-                    bgColor = '#fee2e2'; // Red-100
-                    textColor = '#b91c1c'; // Red-700
-                } else if (type === 'warn') {
-                    bgColor = '#fffbe5'; // Yellow-100
-                    textColor = '#78350f'; // Yellow-800
-                } else {
-                    bgColor = '#d1fae5'; // Green-100
-                    textColor = '#065f46'; // Green-700
-                }
-
-                statusElement.textContent = message;
-                statusElement.style.backgroundColor = bgColor;
-                statusElement.style.color = textColor;
-                statusElement.style.borderRadius = '0.5rem';
-                statusElement.style.marginBottom = '1rem';
-                statusElement.style.padding = '0.75rem'; 
-                statusElement.style.fontSize = '0.875rem';
-            }
-            console.log(message);
-        };
-
-        const displayMessage = (text, type = 'info') => {
-            const modal = document.createElement('div');
-            modal.className = 'modal-backdrop';
-            modal.innerHTML = `
-                <div class="card modal-card p-6">
-                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">${type === 'error' ? 'Error' : 'Notification'}</h3>
-                    <p style="color: var(--color-text-light);">${text}</p>
-                    <button id="closeModal" class="button mt-6" style="background-color: ${type === 'error' ? 'var(--color-danger)' : 'var(--color-primary)'};">Close</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            document.getElementById('closeModal').onclick = () => document.body.removeChild(modal);
-        };
-
-        // --- Core Data Structures ---
-
-        function createTransaction(sender, recipient, amount, type, reference = '') {
-            return {
-                timestamp: Date.now(),
-                sender: sender,
-                recipient: recipient,
-                amount: amount,
-                type: type, // 'payment', 'fee', 'bonus'
-                reference: reference
-            };
-        }
-
-        // --- UI Renders ---
-
-        const formatCurrency = (amount) => {
-            const formatted = parseFloat(amount).toFixed(2);
-            return `₦${(formatted * EXCHANGE_RATE_NGN).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
-        };
-
-        const calculateAndDisplayBalance = () => {
-            let tempBalance = 0;
-            const myUid = userId;
-            
-            // ADMIN Privilege: Infinite Balance
-            if (isAdmin) { 
-                tempBalance = Infinity;
-            } else {
-                transactions.forEach(tx => {
-                    if (tx.sender === myUid) {
-                        tempBalance -= tx.amount;
-                    }
-                    if (tx.recipient === myUid) {
-                        tempBalance += tx.amount;
-                    }
-                });
-            }
-
-            balanceBVN = tempBalance;
-
-            const balanceBVNEl = document.getElementById('balance-bvn');
-            const balanceNGNEl = document.getElementById('balance-ngn');
-            const balanceStatusEl = document.getElementById('balance-status');
-            const sendButton = document.getElementById('send-bvn-button');
-            const issueButton = document.getElementById('issue-bvn-button');
-
-            if (balanceBVNEl) balanceBVNEl.textContent = isAdmin ? '∞' : balanceBVN.toFixed(2);
-            if (balanceNGNEl) balanceNGNEl.textContent = isAdmin ? 'ADMIN' : formatCurrency(balanceBVN);
-            
-            if (balanceStatusEl) {
-                balanceStatusEl.textContent = isAdmin ? 'STATUS: ADMIN (Infinite)' : (balanceBVN >= 0 ? 'STATUS: Solvent' : 'STATUS: Overdrawn');
-                balanceStatusEl.classList.toggle('success', balanceBVN >= 0 || isAdmin);
-                balanceStatusEl.classList.toggle('danger', balanceBVN < 0 && !isAdmin);
-            }
-
-            if (sendButton) sendButton.disabled = !isAdmin && balanceBVN <= 0;
-            if (issueButton) issueButton.disabled = !isAdmin;
-
-            renderTransactionHistory();
-            renderUserDirectory();
-        };
-
-        const renderTransactionHistory = () => {
-            const historyBody = document.getElementById('transaction-history-body');
-            if (!historyBody) return;
-
-            historyBody.innerHTML = '';
-
-            const sortedTransactions = [...transactions].sort((a, b) => b.timestamp - a.timestamp);
-
-            sortedTransactions.forEach(tx => {
-                const isSent = tx.sender === userId;
-                const isReceived = tx.recipient === userId;
-                const userReference = isSent ? (profiles[tx.recipient]?.email || tx.recipient) : (profiles[tx.sender]?.email || tx.sender);
-                const amountText = tx.amount.toFixed(2);
-                
-                let direction, styleClass, icon;
-
-                if (tx.type === 'bonus') {
-                    direction = 'BONUS';
-                    styleClass = 'text-yellow-600';
-                    icon = '✨';
-                } else if (isSent && tx.type === 'fee') {
-                    direction = 'FEE';
-                    styleClass = 'text-red-500';
-                    icon = '⬇️';
-                } else if (isSent) {
-                    direction = `OUT to ${userReference}`;
-                    styleClass = 'text-red-600';
-                    icon = '⬇️';
-                } else if (isReceived) {
-                    direction = `IN from ${userReference}`;
-                    styleClass = 'text-green-600';
-                    icon = '⬆️';
-                } else {
-                    direction = 'N/A';
-                    styleClass = 'text-gray-500';
-                    icon = '';
-                }
-
-                const row = document.createElement('tr');
-                row.className = 'border-b';
-                row.innerHTML = `
-                    <td class="table-cell" style="font-weight: 500;" class="${styleClass}">${icon} ${direction}</td>
-                    <td class="table-cell ${styleClass}">${amountText} BVN</td>
-                    <td class="table-cell" style="font-size: 0.75rem; color: var(--color-text-light);">${new Date(tx.timestamp).toLocaleString()}</td>
-                    <td class="table-cell text-truncate" style="font-size: 0.75rem; color: #9ca3af;">${tx.sender} / ${tx.recipient}</td>
-                `;
-                historyBody.appendChild(row);
-            });
-        };
-
-        const renderUserDirectory = () => {
-            const directoryBody = document.getElementById('directory-body');
-            if (!directoryBody) return;
-
-            directoryBody.innerHTML = '';
-            
-            // Only list actual users with emails (or a valid UID in the map, filtering out the email index)
-            const uniqueProfiles = Object.values(profiles).filter((value, index, self) => 
-                index === self.findIndex((t) => (t.uid === value.uid)) && value.email
-            );
-
-            uniqueProfiles.forEach(profile => {
-                const row = document.createElement('tr');
-                row.className = 'border-b';
-                row.innerHTML = `
-                    <td class="table-cell" style="font-weight: 500;">${profile.email}</td>
-                    <td class="table-cell text-truncate">${profile.uid}</td>
-                    <td class="table-cell">${profile.isAdmin ? '<span class="admin-tag" style="background-color: var(--color-secondary);">ADMIN</span>' : 'User'}</td>
-                `;
-                directoryBody.appendChild(row);
-            });
-        };
-
-        // --- Core Logic ---
-
-        const saveUserProfile = async (uid, email, displayName, userIsAdmin) => {
-            const profileRef = path('user_profiles_v2', uid);
-            try {
-                await setDoc(profileRef, {
-                    uid,
-                    email,
-                    displayName,
-                    isAdmin: userIsAdmin,
-                    lastSeen: Date.now(),
-                }, { merge: true });
-            } catch (error) {
-                log('Failed to save profile (Check Security Rules): ' + error.message, 'error');
-            }
-        };
-
-        const authenticate = async () => {
-            try {
-                log('Attempting authentication...');
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    log('No initial auth token provided. User must manually sign in via Google.');
-                    document.getElementById('sign-in-button').onclick = async () => {
-                        const provider = new GoogleAuthProvider();
-                        try {
-                            await signInWithPopup(auth, provider);
-                        } catch (e) {
-                            log('Google Sign-in failed: ' + e.message, 'error');
-                        }
-                    };
-                }
-            } catch (error) {
-                log('Authentication failed: ' + error.message, 'error');
-            }
-        };
+        // --- DOM Elements ---
+        const statusDisplay = document.getElementById('status-display');
+        const authStatusEl = document.getElementById('auth-status');
+        const balanceEl = document.getElementById('wallet-balance');
+        const logListEl = document.getElementById('transaction-log-list');
+        const directoryListEl = document.getElementById('directory-list');
+        const adminAreaEl = document.getElementById('admin-area');
+        const sendBvnCardEl = document.getElementById('send-bvn-card');
+        const signInPromptEl = document.getElementById('sign-in-prompt');
         
-        const handleAuthChange = async (user) => {
-            const authStatusEl = document.getElementById('auth-status');
-            const authDetailsEl = document.getElementById('auth-details');
-            const signInButton = document.getElementById('sign-in-button');
-            const signOutButton = document.getElementById('sign-out-button');
-            const adminIssueCard = document.getElementById('admin-issue-card');
+        // --- Utility Functions ---
+        const displayStatus = (message, isError = false) => {
+            statusDisplay.textContent = message;
+            statusDisplay.className = 'status-message';
+            statusDisplay.classList.add(isError ? 'status-error' : 'status-success');
+            statusDisplay.classList.remove('hidden');
+            setTimeout(() => statusDisplay.classList.add('hidden'), 5000);
+        };
 
-            if (user) {
-                userId = user.uid;
-                const email = user.email || 'Anonymous';
-                
-                // Check if the current user is the defined admin
-                const userIsAdmin = email === ADMIN_EMAIL;
-                isAdmin = userIsAdmin;
+        const generateReference = () => {
+            return 'TX-' + new Date().getTime() + '-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+        };
 
-                await saveUserProfile(user.uid, email, user.displayName || 'Unknown User', isAdmin);
+        const formatBVN = (amount) => {
+            if (isAdminUser && amount === Infinity) return '∞ BVN';
+            return `${parseFloat(amount).toFixed(2)} BVN`;
+        };
 
-                authStatusEl.textContent = 'Authenticated';
-                authStatusEl.style.color = 'var(--color-secondary)';
-                authStatusEl.style.fontWeight = 'bold';
-                
-                authDetailsEl.innerHTML = `
-                    <p style="font-size: 0.75rem; color: var(--color-text-light);">UID: <span style="font-family: monospace;">${user.uid}</span></p>
-                    <p style="font-size: 0.75rem; color: var(--color-text-light);">Email: ${email} ${isAdmin ? '<span class="admin-tag" style="background-color: var(--color-primary);">ADMIN</span>' : ''}</p>
-                `;
-                
-                signInButton.style.display = 'none';
-                signOutButton.style.display = 'inline-block';
+        // --- Core Business Logic ---
 
-                if (adminIssueCard) {
-                    adminIssueCard.style.display = isAdmin ? 'block' : 'none';
+        const calculateAndDisplayBalance = (transactions) => {
+            if (!isAuthReady) return;
+
+            if (isAdminUser) {
+                balanceEl.innerHTML = `Balance: <span style="color: #27ae60; font-weight: bold;">${formatBVN(Infinity)}</span>`;
+                return;
+            }
+
+            let balance = 0;
+            transactions.forEach(tx => {
+                const amount = tx.amount;
+                if (tx.sender === userId && tx.recipient !== 'NETWORK') {
+                    // Outgoing P2P payment or Fee (Rule 1a/1b)
+                    balance -= amount;
+                } else if (tx.recipient === userId) {
+                    // Incoming payment or Fee refund (If not a self-fee, the fee rule ensures sender is also user for fee)
+                    balance += amount;
+                }
+            });
+
+            const color = balance >= 0 ? '#27ae60' : '#e74c3c';
+            balanceEl.innerHTML = `Balance: <span style="color: ${color}; font-weight: bold;">${formatBVN(balance)}</span>`;
+        };
+
+        const renderTransactionLog = (transactions) => {
+            if (!isAuthReady) return;
+            logListEl.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                logListEl.innerHTML = '<li style="text-align: center; color: #7f8c8d;">No transactions found.</li>';
+                return;
+            }
+
+            // Sort by timestamp descending
+            transactions.sort((a, b) => b.timestamp - a.timestamp);
+
+            transactions.forEach(tx => {
+                const isIncoming = tx.recipient === userId && tx.type !== 'fee';
+                const isOutgoing = tx.sender === userId && tx.type !== 'bonus';
+                const isFee = tx.type === 'fee';
+
+                let amountText;
+                let directionClass;
+                let typeClass;
+                let description;
+
+                if (isFee) {
+                    amountText = formatBVN(tx.amount);
+                    directionClass = 'tx-out'; 
+                    typeClass = 'tx-fee';
+                    description = `System Fee`;
+                } else if (isIncoming) {
+                    amountText = `+${formatBVN(tx.amount)}`;
+                    directionClass = 'tx-in';
+                    typeClass = 'tx-payment';
+                    description = `From: ${profiles[tx.sender]?.name || 'Unknown User'}`;
+                } else if (isOutgoing) {
+                    amountText = `-${formatBVN(tx.amount)}`;
+                    directionClass = 'tx-out';
+                    typeClass = 'tx-payment';
+                    description = `To: ${profiles[tx.recipient]?.name || 'Unknown User'}`;
+                } else if (tx.type === 'bonus' && tx.recipient === userId) {
+                    amountText = `+${formatBVN(tx.amount)}`;
+                    directionClass = 'tx-in';
+                    typeClass = 'tx-bonus';
+                    description = `Issued by Network Admin`;
+                } else {
+                    return; // Skip if not relevant to the user
                 }
 
-                startListeners();
-                log(`User signed in. UID: ${user.uid}, Email: ${email}, Admin: ${isAdmin}`);
-
-            } else {
-                userId = null;
-                isAdmin = false;
-                authStatusEl.textContent = 'Signed Out';
-                authStatusEl.style.color = 'var(--color-danger)';
-                authDetailsEl.innerHTML = '<p style="font-size: 0.875rem; color: var(--color-text-light);">Please sign in to view and transact.</p>';
+                const date = new Date(tx.timestamp).toLocaleString();
                 
-                signInButton.style.display = 'inline-block';
-                signOutButton.style.display = 'none';
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="tx-header">
+                        <span>${date}</span>
+                        <span>Ref: ${tx.reference.substring(0, 10)}...</span>
+                    </div>
+                    <div class="tx-details">
+                        <span class="tx-type ${typeClass}">${tx.type.toUpperCase()}</span>
+                        <span class="tx-amount ${directionClass}">${amountText}</span>
+                        <p style="margin: 5px 0 0;">${description}</p>
+                    </div>
+                `;
+                logListEl.appendChild(li);
+            });
+        };
 
-                if (adminIssueCard) adminIssueCard.style.display = 'none';
-
-                profiles = {};
-                transactions = [];
-                balanceBVN = 0;
-                calculateAndDisplayBalance();
+        const renderDirectory = (profilesData) => {
+            directoryListEl.innerHTML = '';
+            Object.values(profilesData).forEach(profile => {
+                if (profile.uid !== userId) { // Don't list self
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="user-name">${profile.name}</div>
+                        <div>
+                            <div class="user-id">${profile.email}</div>
+                            <div class="user-id">ID: ${profile.uid}</div>
+                        </div>
+                    `;
+                    directoryListEl.appendChild(li);
+                }
+            });
+            if (directoryListEl.innerHTML === '') {
+                 directoryListEl.innerHTML = '<li style="text-align: center; color: #7f8c8d;">No other users in directory.</li>';
             }
         };
+
+        // --- Firestore Operations ---
 
         const sendBitVen = async (recipientId, amount) => {
-            const FEE_AMOUNT = 0.01;
-            const totalDebit = parseFloat(amount) + FEE_AMOUNT;
             const amountFloat = parseFloat(amount);
-
             if (amountFloat <= 0) {
-                displayMessage('Payment amount must be greater than zero.', 'error');
+                displayStatus('Amount must be positive.', true);
                 return;
             }
-
-            if (amountFloat < FEE_AMOUNT) {
-                displayMessage('Payment must be at least 0.01 BVN to cover the network fee.', 'error');
+            if (userId === recipientId) {
+                displayStatus('Cannot send BVN to yourself (use the Issue feature for admin).', true);
                 return;
             }
-            
-            if (!isAdmin && balanceBVN < totalDebit) {
-                displayMessage(`Insufficient balance. Requires ${totalDebit.toFixed(2)} BVN (including 0.01 BVN fee). Current: ${balanceBVN.toFixed(2)} BVN`, 'error');
+            if (!profiles[recipientId] && !profiles[Object.keys(profiles).find(key => profiles[key].email === recipientId)]) {
+                displayStatus('Recipient ID or Email not found in directory.', true);
                 return;
             }
 
             const sender = userId;
-            const recipient = recipientId;
-            const transactionRef = path('ledger_transactions_v3', 'TX' + Date.now() + Math.random().toString(36).substring(2, 9).toUpperCase());
+            const recipient = profiles[recipientId] ? recipientId : Object.keys(profiles).find(key => profiles[key].email === recipientId);
+            if (!recipient) {
+                displayStatus('Recipient ID not found. Ensure the UID or Email is correct.', true);
+                return;
+            }
 
+            // Note: Balance check is done inside the transaction for atomic safety
             try {
-                await runTransaction(db, async (transaction) => {
-                    // 1. Core Payment Transaction
-                    const paymentTx = createTransaction(sender, recipient, amountFloat, 'payment', 'P2P Transfer');
-                    transaction.set(transactionRef, paymentTx);
+                const transactionResult = await runTransaction(db, async (transaction) => {
+                    // --- 1. Fee Transaction (Type: fee) ---
+                    // Rule 1b: sender MUST be userId, recipient MUST be userId, type MUST be 'fee'.
+                    const feeRef = doc(collection(db, `artifacts/${appId}/public/data/ledger_transactions_v3`));
+                    const feeData = {
+                        timestamp: Date.now(),
+                        sender: sender,
+                        recipient: sender, // Recipient is also the sender for the fee transaction
+                        amount: NETWORK_FEE,
+                        type: 'fee',
+                        reference: generateReference()
+                    };
+                    transaction.set(feeRef, feeData);
+                    
+                    // --- 2. P2P Payment Transaction (Type: payment) ---
+                    // Rule 1a: sender MUST be userId, recipient MUST NOT be userId, type MUST be 'payment'.
+                    const paymentRef = doc(collection(db, `artifacts/${appId}/public/data/ledger_transactions_v3`));
+                    const paymentData = {
+                        timestamp: Date.now(),
+                        sender: sender,
+                        recipient: recipient,
+                        amount: amountFloat,
+                        type: 'payment',
+                        reference: generateReference()
+                    };
+                    transaction.set(paymentRef, paymentData);
 
-                    // 2. Network Fee Transaction (sent from sender's account)
-                    const feeTxRef = path('ledger_transactions_v3', 'FEE' + Date.now() + Math.random().toString(36).substring(2, 9).toUpperCase());
-                    const feeTx = createTransaction(sender, sender, FEE_AMOUNT, 'fee', 'Network Fee');
-                    transaction.set(feeTxRef, feeTx);
+                    return true;
                 });
-
-                log(`Initiating instant payment: ${amountFloat} BVN from ${sender} to ${recipient}`);
-                displayMessage(`Successfully sent ${amountFloat.toFixed(2)} BVN to ${profiles[recipient]?.email || recipient}. A ${FEE_AMOUNT.toFixed(2)} BVN network fee was applied.`);
-
-            } catch (error) {
-                log('Transaction failed: ' + error.message, 'error');
-                displayMessage(`Transaction failed: ${error.message}`, 'error');
+                
+                if (transactionResult) {
+                    displayStatus(`Successfully sent ${formatBVN(amountFloat)} to ${profiles[recipient]?.name || recipient}. Network Fee: ${formatBVN(NETWORK_FEE)}.`);
+                }
+            } catch (e) {
+                if (e.message.includes('insufficient permissions')) {
+                    displayStatus('Transaction failed: Insufficient permissions (Check Security Rules and Sender/Recipient UIDs).', true);
+                } else {
+                    displayStatus(`Transaction failed: ${e.message}`, true);
+                }
             }
         };
 
+
         const issueBitVen = async (recipientId, amount) => {
-            if (!isAdmin) {
-                displayMessage('Only administrators can issue new BVN.', 'error');
+            if (!isAdminUser) {
+                displayStatus('Access Denied: Only the Admin can issue BVN.', true);
                 return;
             }
             const amountFloat = parseFloat(amount);
             if (amountFloat <= 0) {
-                displayMessage('Issue amount must be greater than zero.', 'error');
+                displayStatus('Amount must be positive.', true);
+                return;
+            }
+            if (!profiles[recipientId]) {
+                 displayStatus('Recipient ID not found in directory.', true);
                 return;
             }
 
-            const recipient = recipientId;
-            const transactionRef = path('ledger_transactions_v3', 'ISSUE' + Date.now() + Math.random().toString(36).substring(2, 9).toUpperCase());
+            // Rule 2: sender MUST be 'NETWORK', type MUST be 'bonus', and writer MUST be Admin.
+            const txData = {
+                timestamp: Date.now(),
+                sender: 'NETWORK', 
+                recipient: recipientId,
+                amount: amountFloat,
+                type: 'bonus',
+                reference: generateReference()
+            };
 
             try {
-                await runTransaction(db, async (transaction) => {
-                    // Sender is 'NETWORK' for issuance
-                    const bonusTx = createTransaction('NETWORK', recipient, amountFloat, 'bonus', 'Admin Issue / Network Bonus');
-                    transaction.set(transactionRef, bonusTx);
-                });
-
-                log(`Admin issued ${amountFloat} BVN to ${recipient}`);
-                displayMessage(`Successfully issued ${amountFloat.toFixed(2)} BVN to ${profiles[recipient]?.email || recipient}.`);
-
-            } catch (error) {
-                log('Issue transaction failed: ' + error.message, 'error');
-                displayMessage(`Issue transaction failed: ${error.message}`, 'error');
+                const txCollection = collection(db, `artifacts/${appId}/public/data/ledger_transactions_v3`);
+                await setDoc(doc(txCollection), txData);
+                displayStatus(`Admin successfully issued ${formatBVN(amountFloat)} to ${profiles[recipientId]?.name || recipientId}.`);
+            } catch (e) {
+                console.error("Issue transaction failed:", e);
+                displayStatus('Issue transaction failed: Missing or insufficient permissions.', true);
             }
         };
+        
+        // --- Authentication ---
 
-        // --- Firebase Listeners ---
+        const handleAuthChange = async (user) => {
+            isAuthReady = true;
+            if (user) {
+                userId = user.uid;
+                const userEmail = user.email || 'N/A';
+                isAdminUser = userEmail === ADMIN_EMAIL;
+                
+                authStatusEl.innerHTML = `Status: <span style="color: #27ae60; font-weight: bold;">Authenticated</span> | Email: ${userEmail} | UID: ${userId}`;
+                signInPromptEl.style.display = 'none';
+                sendBvnCardEl.style.display = 'block';
+                
+                if (isAdminUser) {
+                    adminAreaEl.classList.remove('hidden');
+                } else {
+                    adminAreaEl.classList.add('hidden');
+                }
 
-        const startListeners = () => {
-            // 1. Profile Listener
-            onSnapshot(path('user_profiles_v2'), (snapshot) => {
+                // 1. Save/Update User Profile
+                const profileRef = doc(db, `artifacts/${appId}/public/data/user_profiles_v2`, userId);
+                await setDoc(profileRef, {
+                    uid: userId,
+                    email: userEmail,
+                    name: user.displayName || userEmail,
+                    admin: isAdminUser,
+                    lastLogin: Date.now()
+                }, { merge: true }).catch(e => {
+                    console.error("Failed to save profile:", e);
+                    displayStatus('Failed to save profile (Check Security Rules): Missing or insufficient permissions.', true);
+                });
+
+                // 2. Start Data Listeners
+                startDataListeners();
+            } else {
+                userId = null;
+                isAdminUser = false;
+                authStatusEl.innerHTML = 'Status: Not Authenticated';
+                balanceEl.textContent = 'Balance: N/A';
+                adminAreaEl.classList.add('hidden');
+                sendBvnCardEl.style.display = 'none';
+                signInPromptEl.style.display = 'block';
+                logListEl.innerHTML = '<li style="text-align: center; color: #7f8c8d;">Awaiting authentication...</li>';
+                directoryListEl.innerHTML = '<li style="text-align: center; color: #7f8c8d;">Loading profiles...</li>';
+            }
+        };
+        
+        window.signInWithGoogle = () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider)
+                .catch((error) => {
+                    displayStatus(`Sign-in failed: ${error.message}`, true);
+                });
+        };
+
+        const startDataListeners = () => {
+            if (!userId) return;
+
+            // Listener 1: User Directory
+            const profilesCollection = collection(db, `artifacts/${appId}/public/data/user_profiles_v2`);
+            onSnapshot(profilesCollection, (snapshot) => {
                 profiles = {};
-                snapshot.forEach(doc => {
-                    const profile = doc.data();
-                    profiles[profile.uid] = profile;
-                    if (profile.email) {
-                        profiles[profile.email] = profile; 
-                    }
+                snapshot.forEach(d => {
+                    profiles[d.id] = d.data();
+                    profiles[d.data().email] = d.data(); // Allow lookup by email
                 });
-                log('User profiles snapshot received.');
-                calculateAndDisplayBalance();
-                renderUserDirectory();
-            }, (error) => {
-                log('Error listening to profiles: ' + error.message, 'error');
+                renderDirectory(profiles);
+                console.log("User profiles snapshot received.");
             });
 
-            // 2. Transaction Log Listener
-            onSnapshot(path('ledger_transactions_v3'), (snapshot) => {
-                transactions = [];
-                snapshot.forEach(doc => {
-                    transactions.push(doc.data());
-                });
-                log('Transaction log snapshot received.');
-                calculateAndDisplayBalance();
-                renderTransactionHistory();
-            }, (error) => {
-                log('Error listening to transactions: ' + error.message, 'error');
-            });
-
-            // 3. Invoices Listener (Placeholder)
-            onSnapshot(path('invoices_v2'), (snapshot) => {
-                log('Invoices snapshot received.');
-            }, (error) => {
-                log('Error listening to invoices: ' + error.message, 'error');
+            // Listener 2: Transaction Log (ALL transactions)
+            const txCollection = collection(db, `artifacts/${appId}/public/data/ledger_transactions_v3`);
+            onSnapshot(txCollection, (snapshot) => {
+                const transactions = [];
+                snapshot.forEach(d => transactions.push(d.data()));
+                
+                calculateAndDisplayBalance(transactions);
+                renderTransactionLog(transactions);
+                console.log("Transaction log snapshot received.");
             });
         };
 
-        // --- Initial Setup ---
+        // --- Initialization ---
 
         const initializeBitVen = () => {
-            // All good, proceed with Auth flow
-            onAuthStateChanged(auth, handleAuthChange);
-            authenticate();
+             try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                displayStatus(`Fatal Error: Firebase initialization failed. Please check your config.`, true);
+                return; 
+            }
+            
+            console.log("Attempting authentication...");
 
+            // Use the provided auth token if available, otherwise rely on Google sign-in
+            if (typeof __initial_auth_token !== 'undefined') {
+                signInWithCustomToken(auth, __initial_auth_token)
+                    .catch((error) => {
+                        console.error("Custom token sign-in failed:", error);
+                        displayStatus("Custom sign-in failed. Please use Google Sign-in.", true);
+                    });
+            } else {
+                console.log("No initial auth token provided. User must manually sign in via Google.");
+            }
+            
+            // Set up main auth state listener
+            onAuthStateChanged(auth, handleAuthChange);
+
+            // Setup form listeners
             document.getElementById('send-bvn-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const recipientEmailOrId = document.getElementById('recipient-id').value.trim();
                 const amount = document.getElementById('send-amount').value.trim();
-                
-                const recipientProfile = profiles[recipientEmailOrId];
-                const recipientId = recipientProfile ? recipientProfile.uid : recipientEmailOrId;
-
-                sendBitVen(recipientId, amount);
+                sendBitVen(recipientEmailOrId, amount);
                 e.target.reset();
             });
 
             document.getElementById('issue-bvn-form').addEventListener('submit', (e) => {
                 e.preventDefault();
-                const recipientEmailOrId = document.getElementById('issue-recipient-id').value.trim();
+                const recipientId = document.getElementById('issue-recipient-id').value.trim();
                 const amount = document.getElementById('issue-amount').value.trim();
-
-                const recipientProfile = profiles[recipientEmailOrId];
-                const recipientId = recipientProfile ? recipientProfile.uid : recipientEmailOrId;
-
                 issueBitVen(recipientId, amount);
                 e.target.reset();
             });
-
-            document.getElementById('sign-out-button').addEventListener('click', () => {
-                signOut(auth);
-            });
         };
 
-        window.onload = initializeBitVen;
-
+        initializeBitVen();
     </script>
-
-    <div class="container" style="padding: 1rem;">
-        <header style="margin-bottom: 2rem;">
-            <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--color-text-dark); display: flex; align-items: center;">
-                <span role="img" aria-label="Ven" style="margin-right: 0.5rem;">💰</span> BitVen System
-            </h1>
-            <p style="color: var(--color-text-light); margin-top: 0.25rem;">Instant, Transparent, Digital Transactions</p>
-        </header>
-
-        <div id="status-message" style="padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; margin-bottom: 1rem; background-color: #dbeafe; color: #1e40af;">Initializing...</div>
-
-        <!-- Auth Status & Sign-In -->
-        <div class="card" style="margin-bottom: 2rem; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h2 style="font-size: 1.125rem; font-weight: 600; color: var(--color-text-dark);">Authentication Status</h2>
-                <p id="auth-status" class="danger" style="font-weight: bold;">Signed Out</p>
-                <div id="auth-details" style="margin-top: 0.5rem;">
-                    <p style="font-size: 0.875rem; color: var(--color-text-light);">Please sign in to view and transact.</p>
-                </div>
-            </div>
-            <div style="margin-top: 1rem; width: 100%; max-width: 200px;">
-                <button id="sign-in-button" class="button" style="background-color: var(--color-primary);">Sign In with Google</button>
-                <button id="sign-out-button" class="button button-danger" style="display: none;">Sign Out</button>
-            </div>
-        </div>
-
-        <div class="grid-layout">
-            
-            <!-- Left Column: Wallet & Transactions -->
-            <div style="grid-column: span 1 / span 1;">
-
-                <!-- Wallet Card -->
-                <div class="card" style="margin-bottom: 2rem;">
-                    <h2 style="font-size: 1.5rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Your BitVen Wallet</h2>
-                    <div style="display: flex; flex-direction: column; justify-content: space-between; align-items: center; background-color: var(--color-bg-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--color-primary);">
-                        <div style="margin-bottom: 0.75rem;">
-                            <p style="font-size: 0.875rem; color: var(--color-text-light);">Balance (BVN)</p>
-                            <h3 id="balance-bvn" style="font-size: 2.25rem; font-weight: 800; color: var(--color-text-dark);">0.00</h3>
-                        </div>
-                        <div style="text-align: right; width: 100%;">
-                            <p style="font-size: 0.875rem; color: var(--color-text-light);">Approximate Value (NGN)</p>
-                            <h3 id="balance-ngn" style="font-size: 1.5rem; font-weight: bold; color: var(--color-text-dark);">₦0.00</h3>
-                            <p id="balance-status" class="success" style="font-size: 0.875rem; margin-top: 0.25rem;">STATUS: Solvent</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Send Form -->
-                <div class="card" style="margin-bottom: 2rem;">
-                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Send BitVen (P2P)</h2>
-                    <form id="send-bvn-form" style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div class="form-group">
-                            <label for="recipient-id" class="form-label">Recipient Email or UID</label>
-                            <input type="text" id="recipient-id" required class="form-input" placeholder="user@example.com or UID">
-                        </div>
-                        <div class="form-group">
-                            <label for="send-amount" class="form-label">Amount (BVN)</label>
-                            <input type="number" step="0.01" min="0.01" id="send-amount" required class="form-input" placeholder="e.g., 1.50">
-                            <p style="font-size: 0.75rem; color: var(--color-text-light); margin-top: 0.25rem;">Note: A 0.01 BVN network fee applies to all P2P transactions.</p>
-                        </div>
-                        <button type="submit" id="send-bvn-button" class="button button-primary" disabled>
-                            Send BVN
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Admin Issue Form (Hidden by default, shown only for Admin) -->
-                <div class="card" style="margin-bottom: 2rem; display: none;" id="admin-issue-card">
-                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Admin: Issue New BVN</h2>
-                    <form id="issue-bvn-form" style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div class="form-group">
-                            <label for="issue-recipient-id" class="form-label">Recipient Email or UID</label>
-                            <input type="text" id="issue-recipient-id" required class="form-input" placeholder="user@example.com or UID">
-                        </div>
-                        <div class="form-group">
-                            <label for="issue-amount" class="form-label">Amount (BVN)</label>
-                            <input type="number" step="0.01" min="0.01" id="issue-amount" required class="form-input" placeholder="e.g., 1000.00">
-                        </div>
-                        <button type="submit" id="issue-bvn-button" class="button button-danger" disabled>
-                            Issue New BVN
-                        </button>
-                    </form>
-                </div>
-
-            </div>
-
-            <!-- Right Column: History & Directory -->
-            <div style="grid-column: span 1 / span 1;">
-
-                <!-- Transaction History -->
-                <div class="card" style="margin-bottom: 2rem;">
-                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">Transaction Log</h2>
-                    <div class="scrollable-content">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th class="table-cell">Type / Contact</th>
-                                    <th class="table-cell">Amount</th>
-                                    <th class="table-cell">Time</th>
-                                    <th class="table-cell">IDs</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transaction-history-body">
-                                <!-- Transactions will be injected here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- User Directory -->
-                <div class="card">
-                    <h2 style="font-size: 1.25rem; font-weight: bold; color: var(--color-text-dark); margin-bottom: 1rem;">User Directory</h2>
-                    <div class="scrollable-content">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th class="table-cell">Email</th>
-                                    <th class="table-cell">UID</th>
-                                    <th class="table-cell">Role</th>
-                                </tr>
-                            </thead>
-                            <tbody id="directory-body">
-                                <!-- Profiles will be injected here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>
