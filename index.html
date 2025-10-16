@@ -3,231 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BitVen(BVN)</title>
+    <title>BitVen-Forca</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
         /* --- Base & Typography --- */
+        :root {
+            --color-primary: #007bff; /* Blue */
+            --color-secondary: #28a745; /* Green */
+            --color-warning: #ffc107; /* Yellow */
+            --color-danger: #dc3545; /* Red */
+            --color-background: #f4f6f9;
+            --color-card: #ffffff;
+            --color-text-dark: #212529;
+            --color-text-light: #6c757d;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray background */
-            padding: 16px;
+            background-color: var(--color-background);
+            padding: 20px;
             margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
 
-        #app {
-            max-width: 1280px;
-            margin: auto;
-        }
-
-        /* --- Components --- */
-        .card {
-            background-color: white;
+        #app-container {
+            width: 100%;
+            max-width: 1000px;
+            background-color: var(--color-card);
+            padding: 30px;
             border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 15px rgba(0, 0, 0, 0.05);
-            margin-bottom: 32px; /* Spacing between cards */
-            border-top: 4px solid #10b981; /* Emerald accent */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
         }
-        
-        .card-header {
-            font-size: 1.5rem; /* 24px */
+
+        /* --- Headers --- */
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--color-text-dark);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 span.symbol {
+            font-size: 2.5rem;
+            color: var(--color-secondary);
+            margin-right: 10px;
+        }
+
+        h2 {
+            font-size: 1.75rem;
             font-weight: 700;
-            color: #1f2937; /* Gray-800 */
-            margin-bottom: 16px;
+            color: var(--color-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--color-primary);
+            display: flex;
+            align-items: center;
         }
 
         /* --- Buttons --- */
-        .btn-base {
+        .btn {
             padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 700;
+            border-radius: 8px;
+            font-weight: 600;
             transition: all 0.2s;
             cursor: pointer;
             text-align: center;
             border: none;
+            flex: 1;
+            margin: 0 5px;
         }
 
-        .btn-primary {
-            background-color: #10b981; /* Emerald-500 */
+        .btn-deposit {
+            background-color: var(--color-secondary);
             color: white;
         }
 
-        .btn-primary:hover:not(:disabled) {
-            background-color: #059669; /* Emerald-600 */
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.4);
+        .btn-deposit:hover:not(:disabled) {
+            background-color: #218838;
+            box-shadow: 0 4px 6px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-withdraw {
+            background-color: var(--color-danger);
+            color: white;
+        }
+
+        .btn-withdraw:hover:not(:disabled) {
+            background-color: #c82333;
+            box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3);
         }
         
-        .btn-primary:active:not(:disabled) {
-            transform: translateY(1px);
-        }
-
-        .btn-primary:disabled {
-            background-color: #6ee7b7; /* Emerald-300 */
+        .btn:disabled {
+            opacity: 0.7;
             cursor: not-allowed;
-            opacity: 0.8;
-        }
-
-        .btn-secondary {
-            background-color: white;
-            color: #10b981;
-            border: 2px solid #10b981;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background-color: #f0fdf4; /* Emerald-50 */
         }
 
         /* --- Form Elements --- */
-        .tx-input {
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-field {
             width: 100%;
             padding: 12px;
-            border: 2px solid #d1d5db; /* Gray-300 */
-            border-radius: 8px;
-            margin-top: 4px;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         
-        .tx-input:focus {
-            border-color: #10b981;
+        .input-field:focus {
+            border-color: var(--color-primary);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
         }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        .form-label {
+
+        .label {
             display: block;
-            font-size: 0.875rem; /* 14px */
-            font-weight: 600;
-            color: #4b5563; /* Gray-600 */
-            margin-bottom: 4px;
-        }
-
-        /* --- Layout: Grid & Spacing --- */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 32px;
-        }
-
-        @media (min-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr 2fr;
-            }
-        }
-        
-        /* --- Wallet Display --- */
-        .wallet-info {
-            background-color: #f3f4f6; /* Gray-100 */
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .wallet-info span {
-            color: #6b7280; /* Gray-500 */
             font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-dark);
+            margin-bottom: 5px;
         }
 
-        .balance-box {
-            background-color: #e0f2f1; /* Emerald-100 */
+        /* --- Account Details & Balance --- */
+        #user-account-details {
+            background-color: #e9f5ff; /* Light Blue */
+            border-left: 5px solid var(--color-primary);
             padding: 20px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .balance-display {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .balance-label {
+            font-size: 1rem;
+            color: var(--color-text-light);
+            font-weight: 600;
+        }
+
+        .text-bvn {
+            color: var(--color-secondary);
         }
         
-        .balance-row {
+        .text-ngn {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-dark);
+            margin-top: 5px;
+            display: block;
+        }
+
+        .text-negative {
+            color: var(--color-danger);
+        }
+
+        .text-positive {
+            color: var(--color-secondary);
+        }
+
+        /* --- Admin View Specifics --- */
+        #admin-view h2 {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+
+        #admin-account-list {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 15px; /* Space for scrollbar */
+            margin-top: 15px;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+        }
+
+        .account-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .balance-label {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #065f46; /* Emerald-700 */
-        }
-        
-        #current-balance {
-            font-size: 2.25rem; /* 36px */
-            font-weight: 800;
-            color: #047857; /* Emerald-800 */
-        }
-        
-        #current-balance-ngn {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #374151; /* Gray-700 */
-        }
-        
-        #current-balance.negative {
-            color: #dc2626; /* Red-600 */
-        }
-        
-        #current-balance-ngn.negative {
-            color: #991b1b; /* Dark Red */
-        }
-
-        /* --- Transaction Mode Buttons --- */
-        .mode-selector {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 24px;
-        }
-        
-        .mode-selector button {
-            flex: 1;
-        }
-
-        /* --- Message Box (Custom Alert) --- */
-        #message-box {
-            padding: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
             border-radius: 8px;
-            font-size: 0.875rem;
+            background-color: var(--color-card);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e0e0;
+        }
+
+        .account-item.admin-self {
+            border: 2px solid var(--color-warning);
+            background-color: #fffde7;
+        }
+
+        .account-details p {
+            margin: 0;
+        }
+
+        .account-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--color-text-dark);
+        }
+
+        .account-uid {
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: var(--color-text-light);
+            word-break: break-all;
+        }
+        
+        .account-balance-display {
+            text-align: right;
+        }
+
+        .account-balance-display .bvn {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        /* --- Messages & Loading --- */
+        .message-box {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 0.9rem;
             font-weight: 600;
-            border: 1px solid transparent;
-            display: none;
-            margin-bottom: 16px;
         }
 
-        #message-box.show {
-            display: block;
-        }
-        
         .msg-error {
-            background-color: #fee2e2; /* Red-100 */
-            color: #991b1b; /* Red-800 */
-            border-color: #f87171; /* Red-400 */
-        }
-        
-        .msg-success {
-            background-color: #d1fae5; /* Green-100 */
-            color: #065f46; /* Green-800 */
-            border-color: #34d399; /* Green-400 */
+            background-color: #f8d7da;
+            color: var(--color-danger);
+            border: 1px solid #f5c6cb;
         }
 
-        /* --- Spinner (Loading) --- */
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            margin-right: 12px;
-            display: none;
+        .msg-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        #loading-state {
+            text-align: center;
+            padding: 50px;
         }
         
-        .loading-active .spinner {
+        .spinner {
+            border: 4px solid rgba(0, 123, 255, 0.1);
+            border-top: 4px solid var(--color-primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
             display: inline-block;
         }
 
@@ -236,941 +276,448 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* --- Invoice List --- */
-        .invoice-item {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 16px;
-            border-radius: 10px;
-            background-color: #fef2f2; /* Light Red */
-            border: 2px solid #fca5a5; /* Red border */
-            margin-bottom: 12px;
-        }
-        
-        .invoice-item p {
-            margin: 0;
-            padding: 0;
-        }
-
-        .invoice-item .amount {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #991b1b;
-            margin-top: 4px;
-        }
-        
-        .invoice-item .pay-btn {
-            margin-top: 12px;
-            background-color: #dc2626; /* Red for payment */
-        }
-
-        .invoice-item .pay-btn:hover {
-            background-color: #b91c1c;
-        }
-
-        @media (min-width: 640px) {
-             .invoice-item {
-                flex-direction: row;
-                align-items: center;
+        @media (max-width: 600px) {
+            #app-container {
+                padding: 15px;
             }
-            .invoice-item .pay-btn {
-                margin-top: 0;
+            h1 {
+                font-size: 1.75rem;
+            }
+            .balance-display {
+                font-size: 2rem;
+            }
+            .btn-container {
+                flex-direction: column;
+            }
+            .btn {
+                margin: 5px 0;
             }
         }
-
-        /* --- Blockchain History --- */
-        .history-item {
-            border-left: 4px solid #10b981;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 16px;
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .history-header p {
-            font-weight: 700;
-            color: #1f2937;
-        }
-
-        .tx-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .tx-list li {
-            display: grid;
-            grid-template-columns: 3fr 1fr;
-            gap: 16px;
-            padding: 8px 0;
-            border-bottom: 1px dashed #e5e7eb;
-            align-items: center;
-        }
-        
-        .tx-list li:last-child {
-            border-bottom: none;
-        }
-
-        .tx-details {
-            font-size: 0.875rem;
-            color: #4b5563;
-        }
-        
-        .tx-amount {
-            font-size: 1.25rem;
-            font-weight: 700;
-            text-align: right;
-        }
-
-        /* --- Directory --- */
-        #user-directory {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        @media (min-width: 640px) {
-            #user-directory {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        
-        @media (min-width: 1024px) {
-            #user-directory {
-                grid-template-columns: repeat(6, 1fr);
-            }
-        }
-        
-        .directory-item {
-            background-color: #f9fafb; /* Light Gray */
-            padding: 16px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.15s;
-            cursor: pointer;
-            border: 1px solid #e5e7eb;
-        }
-
-        .directory-item:hover {
-            background-color: #ecfdf5; /* Emerald-50 */
-            border-color: #10b981;
-            transform: translateY(-2px);
-        }
-        
-        .directory-item-name {
-            font-weight: 600;
-            color: #1f2937;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .directory-item-uid {
-            font-size: 0.75rem;
-            font-family: monospace;
-            color: #6b7280;
-            word-break: break-all;
-            display: block;
-            margin-top: 4px;
-        }
-        
-        /* --- Scrollbar Customization (for content areas) --- */
-        .scroll-area {
-            max-height: 400px; /* Adjust height for content areas */
-            overflow-y: auto;
-            padding-right: 8px;
-        }
-
-        .scroll-area::-webkit-scrollbar {
-            width: 8px;
-        }
-        .scroll-area::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 4px;
-        }
-        .scroll-area::-webkit-scrollbar-track {
-            background-color: transparent;
-        }
-
     </style>
 </head>
 <body>
 
-    <div id="app">
-        <header style="text-align: center; margin-bottom: 40px;">
-            <h1 style="font-size: 2.5rem; font-weight: 800; color: #1f2937; display: flex; align-items: center; justify-content: center;">
-                <span style="font-size: 3rem; margin-right: 12px;">₿</span>
-                BitVen Instant Ledger
+    <div id="app-container">
+        <header style="text-align: center; margin-bottom: 30px;">
+            <h1>
+                <span class="symbol">₿</span>
+                BitVen-Forca
+                <span style="font-size: 1rem; font-weight: 400; color: var(--color-secondary); margin-left: 10px;">(1 BVN = ₦1,000)</span>
             </h1>
-            <p id="auth-status" style="font-size: 0.875rem; font-weight: 600; margin-top: 8px; color: #047857;"></p>
+            <p id="auth-status" style="font-size: 0.9rem; font-weight: 600; margin-top: 5px; color: var(--color-text-light);">Initializing...</p>
         </header>
 
-        <!-- Main Grid Layout -->
-        <div class="main-grid">
+        <!-- Loading State -->
+        <div id="loading-state">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: var(--color-text-light);">Connecting to the Ledger...</p>
+        </div>
 
-            <!-- Col 1: Wallet & Send Form -->
-            <div style="grid-column: span 1;">
-                
-                <!-- Wallet/Auth Card -->
-                <div class="card">
-                    <h2 class="card-header">Your Wallet</h2>
-                    <div class="wallet-info">
-                        <span>Wallet ID (UID)</span>
-                        <code id="user-uid" style="font-size: 0.875rem; font-family: monospace; color: #374151; word-break: break-all;">Loading...</code>
-                    </div>
-                    <div class="balance-box">
-                        <div class="balance-row">
-                            <span class="balance-label">Current Balance (BVN)</span>
-                            <span id="current-balance">0.00 BVN</span>
-                        </div>
-                         <div class="balance-row" style="border-top: 1px dashed #a7f3d0; padding-top: 8px;">
-                            <span class="balance-label" style="font-weight: 400; font-size: 0.9rem; color: #065f46;">Approx. Naira Value (1 BVN = ₦800)</span>
-                            <span id="current-balance-ngn" class="negative">₦0.00</span>
-                        </div>
-                    </div>
-                    <button id="copy-uid-btn" class="btn-base btn-secondary" style="width: 100%; margin-top: 16px; font-size: 0.875rem;">Copy Wallet ID</button>
-                </div>
-
-                <!-- Send/Invoice Form Card -->
-                <div class="card">
-                    <h2 class="card-header">Transaction Hub</h2>
-                    
-                    <div class="mode-selector">
-                        <button id="mode-send" class="btn-base btn-primary" data-mode="send">Send Payment</button>
-                        <button id="mode-invoice" class="btn-base btn-secondary" data-mode="invoice">Request Invoice</button>
-                    </div>
-
-                    <div id="message-box" class="msg-error" role="alert"></div>
-
-                    <form id="transaction-form">
-                        <div class="form-group">
-                            <label for="recipient-uid" class="form-label">Recipient Wallet ID</label>
-                            <input type="text" id="recipient-uid" required class="tx-input" placeholder="Enter Wallet ID">
-                        </div>
-                        <div class="form-group">
-                            <label for="amount" class="form-label">Amount (BVN)</label>
-                            <input type="number" id="amount" required min="0.01" step="0.01" class="tx-input" placeholder="e.g., 50.00">
-                            <!-- Fee Note updated with NGN equivalent -->
-                            <p id="fee-note" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">Fee: 0.01 BVN (~₦8.00) (Burned)</p>
-                        </div>
-                        <button type="submit" id="submit-btn" class="btn-base btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center;">
-                            <span id="loading-spinner" class="spinner"></span>
-                            <span id="submit-text">Send 0.00 BVN (₦0.00)</span>
-                        </button>
-                    </form>
-                </div>
+        <!-- Admin View Container -->
+        <div id="admin-view" style="display: none;">
+            <h2>Admin Dashboard</h2>
+            <p style="font-size: 0.9rem; color: var(--color-text-light);">Viewing all accounts. Wallet Owner: <span id="admin-user-id" style="font-family: monospace;"></span></p>
+            <div id="admin-account-list">
+                <!-- Accounts will be injected here -->
             </div>
-
-            <!-- Col 2: Ledger & Invoices -->
-            <div style="grid-column: span 1;">
-                <!-- Pending Invoices -->
-                <div class="card" style="border-top-color: #dc2626;">
-                    <h2 class="card-header">Pending Invoices TO YOU</h2>
-                    <div id="pending-invoices" class="scroll-area">
-                        <p style="color: #6b7280; font-size: 0.875rem;" id="no-invoices">No pending requests.</p>
-                    </div>
-                </div>
-
-                <!-- Blockchain History -->
-                <div class="card">
-                    <h2 class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        Blockchain Ledger
-                        <span id="chain-length" style="font-size: 0.875rem; font-weight: 700; color: #047857; background-color: #d1fae5; padding: 4px 12px; border-radius: 9999px;">Blocks: 0</span>
-                    </h2>
-                    <div id="blockchain-history" class="scroll-area">
-                        <p style="color: #6b7280; font-size: 0.875rem;" id="no-blocks">Listening for first block...</p>
-                    </div>
-                </div>
+            <div id="admin-empty-state" class="message-box" style="display: none;">
+                No accounts found in the database. Please check seeding function.
             </div>
         </div>
 
-        <!-- User Directory -->
-        <div class="card" style="border-top-color: #3b82f6;">
-            <h2 class="card-header">Live User Directory</h2>
-            <div id="user-directory">
-                <p style="color: #6b7280; font-size: 0.875rem; grid-column: 1 / -1;">Loading active users...</p>
+        <!-- User View Container -->
+        <div id="user-view" style="display: none;">
+            <h2>Your Account</h2>
+            <div id="user-account-details">
+                <p style="font-size: 1.1rem; font-weight: 600;">Welcome, <span id="user-account-name" style="color: var(--color-primary);"></span>!</p>
+                <p style="font-size: 0.8rem; color: var(--color-text-light); margin-top: 5px;">User ID: <span id="user-id" style="font-family: monospace;"></span></p>
+                
+                <hr style="margin: 15px 0; border-color: #cce5ff;">
+
+                <div class="balance-label">Current Balance</div>
+                <span id="account-balance-bvn" class="balance-display text-bvn">0.00 BVN</span>
+                <span id="account-balance-ngn" class="text-ngn">₦0.00</span>
+            </div>
+
+            <!-- Transaction Form -->
+            <div style="background-color: var(--color-card); padding: 20px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-dark); margin-bottom: 20px;">Secure Transaction</h3>
+                <div class="input-group">
+                    <label for="transaction-amount" class="label">Amount (BVN)</label>
+                    <input type="number" id="transaction-amount" class="input-field" placeholder="e.g., 50.50" min="0.01" step="0.01">
+                </div>
+                
+                <div id="error-message" class="message-box msg-error" style="display: none;"></div>
+                
+                <div class="btn-container" style="display: flex; margin-top: 20px;">
+                    <button id="deposit-btn" class="btn btn-deposit">Deposit BVN</button>
+                    <button id="withdraw-btn" class="btn btn-withdraw">Withdraw BVN</button>
+                </div>
+                
+                <div id="transaction-feedback" class="message-box msg-success" style="display: none;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Firebase Imports and Logic -->
+    <!-- Firebase Script Block -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, onSnapshot, collection, query, where, writeBatch, runTransaction, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, runTransaction, query, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Global and Configuration ---
-
-        // Global Firebase Variables (Mandatory Canvas/Firebase Setup)
+        // --- Configuration & Globals ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Configuration
-        setLogLevel('Debug');
-        const FIREBASE_APP = initializeApp(firebaseConfig);
-        const DB = getFirestore(FIREBASE_APP);
-        const AUTH = getAuth(FIREBASE_APP);
-        
-        // --- Core Application Configuration ---
-        const BVN_TO_NGN_RATE = 800; // CORRECTED RATE
         const ADMIN_EMAIL = 'lanushomeappliances@gmail.com';
-        const BURN_ADDRESS = '0xBURN-BITVEN-SUPPLY';
-        const TRANSACTION_FEE = 0.01;
+        const BVN_TO_NGN_RATE = 1000; // 1 BVN = ₦1,000
 
-        // Firestore Path Constants
-        const ARTIFACT_PATH = `artifacts/${appId}`;
-        const PUBLIC_DATA_PATH = `${ARTIFACT_PATH}/public/data`;
-        const BLOCKCHAIN_COLLECTION = 'blockchain_chain_v2';
-        const INVOICES_COLLECTION = 'invoices_v2';
-        const USER_PROFILES_COLLECTION = 'user_profiles_v2';
-        const USER_LEDGERS_COLLECTION = 'user_ledgers_v2'; // New collection for fast balance lookup
+        let app, db, auth, userId = null;
+        let isAdmin = false;
 
-        // State Variables
-        let currentUID = null;
-        let isAuthReady = false;
-        let isAdmin = false; // New state variable for admin status
-        let chain = [];
-        let currentMode = 'send';
-
-
-        // DOM Elements
+        // --- DOM Elements (Cached) ---
+        const loadingStateEl = document.getElementById('loading-state');
         const authStatusEl = document.getElementById('auth-status');
-        const userUidEl = document.getElementById('user-uid');
-        const balanceEl = document.getElementById('current-balance');
-        const balanceNgnEl = document.getElementById('current-balance-ngn');
-        const messageBoxEl = document.getElementById('message-box');
-        const submitBtn = document.getElementById('submit-btn');
-        const submitTextEl = document.getElementById('submit-text');
-        const loadingSpinnerEl = document.getElementById('loading-spinner');
-        const formEl = document.getElementById('transaction-form');
-        const recipientInput = document.getElementById('recipient-uid');
-        const amountInput = document.getElementById('amount');
-        const feeNoteEl = document.getElementById('fee-note');
-        const modeSendBtn = document.getElementById('mode-send');
-        const modeInvoiceBtn = document.getElementById('mode-invoice');
-
-
+        const userViewEl = document.getElementById('user-view');
+        const adminViewEl = document.getElementById('admin-view');
+        const accountBalanceBvnEl = document.getElementById('account-balance-bvn');
+        const accountBalanceNgnEl = document.getElementById('account-balance-ngn');
+        const transactionAmountEl = document.getElementById('transaction-amount');
+        const depositBtn = document.getElementById('deposit-btn');
+        const withdrawBtn = document.getElementById('withdraw-btn');
+        const errorMessageEl = document.getElementById('error-message');
+        const transactionFeedbackEl = document.getElementById('transaction-feedback');
+        const adminAccountListEl = document.getElementById('admin-account-list');
+        const adminEmptyStateEl = document.getElementById('admin-empty-state');
+        
         // --- Utility Functions ---
 
-        const createHash = (data) => {
-            return btoa(JSON.stringify(data)).substring(0, 40);
-        };
-
-        const createUUID = () => crypto.randomUUID();
-
-        const formatCurrency = (amount) => {
-            if (amount === Infinity) return '∞ BVN';
-            return `${parseFloat(amount).toFixed(2)} BVN`;
+        const formatBVN = (amount) => {
+            return `${parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} BVN`;
         };
         
         const formatNaira = (amount) => {
-            if (amount === Infinity) return '₦∞';
             const ngnValue = parseFloat(amount) * BVN_TO_NGN_RATE;
-            // Use toLocaleString for better Naira formatting (e.g., separating thousands)
-            return `₦${ngnValue.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            // Use en-NG locale for Naira symbol and thousand separators
+            return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(ngnValue);
         };
-        
-        const showMessage = (text, type = 'error') => {
-            messageBoxEl.textContent = text;
-            messageBoxEl.classList.remove('show', 'msg-error', 'msg-success');
-            
-            if (type === 'error') {
-                messageBoxEl.classList.add('show', 'msg-error');
-            } else {
-                messageBoxEl.classList.add('show', 'msg-success');
-            }
-            
+
+        const displayMessage = (el, text, type = 'success', duration = 5000) => {
+            el.textContent = text;
+            el.className = `message-box msg-${type}`;
+            el.style.display = 'block';
+
             setTimeout(() => {
-                messageBoxEl.classList.remove('show');
-            }, 7000);
+                el.style.display = 'none';
+            }, duration);
         };
-
-        const serializeBlock = (block) => {
-            // Ensure all transaction amounts are properly float parsed for consistency
-            const serializedTransactions = block.transactions.map(tx => ({
-                id: tx.id || createUUID(),
-                from: tx.from,
-                to: tx.to,
-                amount: parseFloat(tx.amount),
-                fee: parseFloat(tx.fee) || 0,
-                timestamp: tx.timestamp,
-                isFeeTransaction: tx.isFeeTransaction || false,
-                signature: tx.signature || 'NONE'
-            }));
-
-            return {
-                hash: block.hash,
-                previousHash: block.previousHash,
-                timestamp: block.timestamp,
-                transactions: serializedTransactions,
-            };
-        };
-
-        // --- Core Blockchain Logic ---
-
-        const getLatestBlockHash = () => {
-            if (chain.length === 0) return '0';
-            return chain[chain.length - 1].hash;
-        };
-
-        const createTransaction = (from, to, amount, fee = 0, isFee = false) => {
-            return {
-                id: createUUID(),
-                from: from,
-                to: to,
-                amount: parseFloat(amount),
-                fee: parseFloat(fee),
-                timestamp: Date.now(),
-                isFeeTransaction: isFee,
-                signature: 'NONE',
-            };
-        };
-
-        const createBlock = (transactions) => {
-            const previousHash = getLatestBlockHash();
-            const timestamp = Date.now();
-            const blockData = { previousHash, timestamp, transactions };
-            const hash = createHash(blockData);
-
-            return { hash, ...blockData };
-        };
-
-        const addBlockToChain = async (block) => {
-            const blockCollectionRef = collection(DB, PUBLIC_DATA_PATH, BLOCKCHAIN_COLLECTION);
-            const blockDataToSave = serializeBlock(block);
-
-            try {
-                await setDoc(doc(blockCollectionRef, blockDataToSave.hash), blockDataToSave); 
-                console.log(`Block successfully added with hash: ${blockDataToSave.hash}`);
-            } catch (error) {
-                console.error("Error writing block to Firestore:", error);
-                showMessage(`Blockchain error: Could not write block. ${error.message}`);
-            }
-        };
-
-        // --- Balance and Ledger Management (CRITICAL FOR ATOMIC TX) ---
-        
-        const getUserLedgerDocRef = (uid) => doc(DB, PUBLIC_DATA_PATH, USER_LEDGERS_COLLECTION, uid);
-
-        const createOrUpdateUserLedger = async (uid, name) => {
-            const ledgerRef = getUserLedgerDocRef(uid);
-            // Check if document exists and create with default balance if not
-            const ledgerSnap = await getDoc(ledgerRef);
-            if (!ledgerSnap.exists()) {
-                await setDoc(ledgerRef, {
-                    uid: uid,
-                    name: name,
-                    balance: 1000.00, // Giving new users an initial balance
-                    isAdmin: isAdmin 
-                });
-            } else {
-                // Ensure isAdmin status is correctly reflected
-                await setDoc(ledgerRef, { isAdmin: isAdmin }, { merge: true });
-            }
-        };
-
-        const startLedgerListener = () => {
-            if (!currentUID) return;
-
-            const ledgerRef = getUserLedgerDocRef(currentUID);
-            onSnapshot(ledgerRef, (docSnap) => {
-                let balance = 0.00;
-                
-                if (isAdmin) {
-                    balance = Infinity;
-                } else if (docSnap.exists()) {
-                    balance = docSnap.data().balance || 0.00;
-                }
-
-                updateUIBalance(balance);
-            }, (error) => {
-                console.error("Ledger Listener Error:", error);
-                updateUIBalance('ERROR');
-            });
-        };
-
-        const updateUIBalance = (balance) => {
-            // Update BVN Display
-            balanceEl.textContent = formatCurrency(balance);
-            balanceEl.classList.remove('negative');
-            
-            // Update NGN Display
-            balanceNgnEl.textContent = formatNaira(balance);
-            balanceNgnEl.classList.remove('negative');
-
-            if (typeof balance === 'number' && balance < 0) {
-                balanceEl.classList.add('negative');
-                balanceNgnEl.classList.add('negative');
-            }
-        };
-
-
-        // --- Main Event Handlers ---
 
         const setLoading = (isLoading) => {
-            submitBtn.disabled = isLoading;
+            depositBtn.disabled = isLoading;
+            withdrawBtn.disabled = isLoading;
             if (isLoading) {
-                submitBtn.classList.add('loading-active');
-                loadingSpinnerEl.style.display = 'inline-block';
-                submitTextEl.textContent = 'Processing...';
+                 transactionFeedbackEl.style.display = 'block';
+                 transactionFeedbackEl.textContent = 'Processing transaction securely...';
+                 transactionFeedbackEl.className = 'message-box msg-success';
+                 errorMessageEl.style.display = 'none';
             } else {
-                submitBtn.classList.remove('loading-active');
-                loadingSpinnerEl.style.display = 'none';
-                updateSubmitButtonText();
+                 // The success/error message display handles its own visibility
             }
         };
 
-        const switchMode = (mode) => {
-            currentMode = mode;
-
-            modeSendBtn.classList.remove('btn-primary', 'btn-secondary');
-            modeInvoiceBtn.classList.remove('btn-primary', 'btn-secondary');
-
-            if (mode === 'send') {
-                modeSendBtn.classList.add('btn-primary');
-                modeInvoiceBtn.classList.add('btn-secondary');
-                feeNoteEl.style.display = 'block';
-                recipientInput.placeholder = "Recipient's Wallet ID";
-            } else { // invoice
-                modeInvoiceBtn.classList.add('btn-primary');
-                modeSendBtn.classList.add('btn-secondary');
-                feeNoteEl.style.display = 'none';
-                recipientInput.placeholder = "Payer's Wallet ID";
-            }
-            updateSubmitButtonText();
+        // --- Database & Seeding ---
+        const getAccountCollectionRef = () => {
+             // Mandatory Public Data Path
+             return collection(db, 'artifacts', appId, 'public', 'data', 'accounts');
         };
 
-        const updateSubmitButtonText = () => {
-            const amount = parseFloat(amountInput.value) || 0;
-            const ngnAmount = formatNaira(amount);
+        async function seedDatabase(currentUserId, currentUserEmail) {
+            const accountsRef = getAccountCollectionRef();
+            // We only check for the admin account doc existence to decide if seeding is needed
+            const adminDocRef = doc(accountsRef, currentUserId);
             
-            if (currentMode === 'send') {
-                submitTextEl.textContent = `Send ${formatCurrency(amount)} (${ngnAmount})`;
-            } else {
-                submitTextEl.textContent = `Request Invoice for ${formatCurrency(amount)} (${ngnAmount})`;
-            }
-        };
+            try {
+                const adminDoc = await getDocs(accountsRef);
+                
+                if (adminDoc.empty) {
+                    console.log("Database empty. Seeding with initial accounts.");
+                    
+                    const seedAccounts = [
+                        { 
+                            name: "Admin Master Wallet", 
+                            email: ADMIN_EMAIL, 
+                            balance: 100000.00, // Large starting balance
+                            userId: currentUserId // This is the admin's actual UID
+                        },
+                        { 
+                            name: "Test User Alpha", 
+                            email: "test.alpha@bitven.com", 
+                            balance: 5000.00, 
+                            userId: 'test_uid_alpha'
+                        },
+                        { 
+                            name: "Test User Beta", 
+                            email: "test.beta@bitven.com", 
+                            balance: 1000.75, 
+                            userId: 'test_uid_beta'
+                        }
+                    ];
 
-        /**
-         * Core transaction logic using Firestore's runTransaction for atomicity.
-         */
-        const handleSendTransaction = async (recipient, amount) => {
-            if (recipient === currentUID) {
-                showMessage("Error: Cannot send funds to your own Wallet ID.");
+                    for (const account of seedAccounts) {
+                        // Use the userId as the document ID
+                        await setDoc(doc(accountsRef, account.userId), account);
+                    }
+                    console.log("Database seeded successfully.");
+                } else if (currentUserEmail === ADMIN_EMAIL) {
+                    // If the user is admin, ensure their profile exists and is updated
+                    await setDoc(adminDocRef, {
+                        name: "Admin Master Wallet",
+                        email: ADMIN_EMAIL,
+                        userId: currentUserId 
+                    }, { merge: true });
+                }
+            } catch (error) {
+                console.error("Seeding or Admin Doc Update Failed:", error);
+            }
+        }
+
+        // --- View Logic ---
+        
+        function setupAdminView(currentUserId) {
+            userViewEl.style.display = 'none';
+            adminViewEl.style.display = 'block';
+
+            document.getElementById('admin-user-id').textContent = currentUserId;
+
+            // Listen for all accounts in real-time
+            const accountsRef = getAccountCollectionRef();
+            onSnapshot(accountsRef, (snapshot) => {
+                const accountsData = [];
+                snapshot.forEach(doc => {
+                    accountsData.push({ id: doc.id, ...doc.data() });
+                });
+                renderAdminAccounts(accountsData);
+            }, (error) => {
+                console.error("Admin Snapshot Error:", error);
+                adminAccountListEl.innerHTML = `<p style="color: var(--color-danger);">Error loading accounts: ${error.message}</p>`;
+            });
+        }
+
+        function renderAdminAccounts(accounts) {
+            adminAccountListEl.innerHTML = '';
+            
+            if (accounts.length === 0) {
+                adminEmptyStateEl.style.display = 'block';
                 return;
             }
-            if (recipient === BURN_ADDRESS) {
-                showMessage("Error: Cannot send directly to burn address.", 'error');
+            adminEmptyStateEl.style.display = 'none';
+
+            // Sort by BVN balance descending
+            accounts.sort((a, b) => b.balance - a.balance); 
+
+            accounts.forEach(account => {
+                const isCurrentUser = account.userId === userId;
+                const balanceClass = account.balance < 0 ? 'text-negative' : 'text-positive';
+                const balanceDisplay = formatBVN(account.balance);
+                const ngnDisplay = formatNaira(account.balance);
+
+                const accountEl = document.createElement('div');
+                accountEl.className = `account-item ${isCurrentUser ? 'admin-self' : ''}`;
+                
+                accountEl.innerHTML = `
+                    <div class="account-details">
+                        <p class="account-name">${account.name} ${isCurrentUser ? '(YOU / ADMIN)' : ''}</p>
+                        <p class="account-uid">UID: ${account.userId}</p>
+                        <p style="font-size: 0.85rem; color: var(--color-text-light); margin-top: 2px;">${account.email}</p>
+                    </div>
+                    <div class="account-balance-display">
+                        <p class="bvn ${balanceClass}">${balanceDisplay}</p>
+                        <p style="font-size: 0.8rem; color: var(--color-text-light);">${ngnDisplay}</p>
+                    </div>
+                `;
+                adminAccountListEl.appendChild(accountEl);
+            });
+        }
+
+        // --- User View Logic ---
+
+        let userAccountId = null; 
+
+        async function setupUserView(currentUserId, currentUserEmail) {
+            adminViewEl.style.display = 'none';
+            userViewEl.style.display = 'block';
+
+            userAccountId = currentUserId;
+            
+            document.getElementById('user-id').textContent = userAccountId;
+
+            // Admin is seeded with a balance in seedDatabase. Non-admin users need a doc too.
+            if (!isAdmin) {
+                 const accountsRef = getAccountCollectionRef();
+                 await setDoc(doc(accountsRef, userAccountId), {
+                    name: `BVN User ${currentUserId.substring(0, 4)}`,
+                    email: currentUserEmail || 'Anonymous User',
+                    balance: 0.00,
+                    userId: currentUserId
+                 }, { merge: true });
+            }
+
+            // Set up real-time listener for the user's specific account
+            const accountDocRef = doc(getAccountCollectionRef(), userAccountId);
+            
+            onSnapshot(accountDocRef, (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    const data = docSnapshot.data();
+                    document.getElementById('user-account-name').textContent = data.name;
+                    
+                    const balance = data.balance || 0.00;
+                    const balanceClass = balance < 0 ? 'text-negative' : 'text-positive';
+                    
+                    accountBalanceBvnEl.textContent = formatBVN(balance);
+                    accountBalanceBvnEl.className = `balance-display text-bvn ${balanceClass}`;
+                    
+                    accountBalanceNgnEl.textContent = formatNaira(balance);
+                    accountBalanceNgnEl.className = `text-ngn ${balanceClass}`;
+                } else {
+                    console.error("User account document not found. Account ID:", userAccountId);
+                    accountBalanceBvnEl.textContent = "Account Not Found";
+                    accountBalanceBvnEl.className = 'balance-display text-bvn text-negative';
+                    accountBalanceNgnEl.textContent = "₦0.00";
+                    accountBalanceNgnEl.className = 'text-ngn text-negative';
+                }
+            }, (error) => {
+                console.error("User Snapshot Error:", error);
+                displayMessage(errorMessageEl, `Live balance error: ${error.message}`, 'error');
+            });
+
+            // Set up event listeners for transactions
+            depositBtn.addEventListener('click', () => handleTransaction('deposit'));
+            withdrawBtn.addEventListener('click', () => handleTransaction('withdraw'));
+        }
+
+        // --- Transaction Logic (Atomic) ---
+        
+        async function handleTransaction(type) {
+            const amount = parseFloat(transactionAmountEl.value);
+            
+            errorMessageEl.style.display = 'none';
+            transactionFeedbackEl.style.display = 'none';
+            
+            if (isNaN(amount) || amount <= 0) {
+                displayMessage(errorMessageEl, 'Please enter a valid amount greater than 0.00 BVN.', 'error');
                 return;
             }
 
             setLoading(true);
-            const totalCost = amount + TRANSACTION_FEE;
-            const senderLedgerRef = getUserLedgerDocRef(currentUID);
 
+            const accountsRef = getAccountCollectionRef();
+            const accountDocRef = doc(accountsRef, userAccountId);
+            
             try {
-                // --- ATOMIC TRANSACTION START ---
-                await runTransaction(DB, async (transaction) => {
-                    const senderDoc = await transaction.get(senderLedgerRef);
+                // RUN TRANSACTION: Guarantees atomicity and prevents race conditions
+                await runTransaction(db, async (transaction) => {
+                    const docSnapshot = await transaction.get(accountDocRef);
 
-                    if (!senderDoc.exists) {
-                        // This should not happen if createOrUpdateUserLedger ran, but for safety:
-                        throw new Error("Sender wallet ledger not found. Please try refreshing.");
+                    if (!docSnapshot.exists()) {
+                        throw new Error("Account does not exist!");
                     }
 
-                    const senderData = senderDoc.data();
-                    const currentBalance = senderData.balance || 0.00;
-                    
-                    // ADMIN CHECK: Admin has infinite funds
-                    if (!isAdmin) {
-                        if (currentBalance < totalCost) {
-                            throw new Error(`Insufficient Funds: Requires ${formatCurrency(totalCost)}. Current: ${formatCurrency(currentBalance)}.`);
+                    const currentBalance = docSnapshot.data().balance || 0;
+                    let newBalance;
+
+                    if (type === 'deposit') {
+                        newBalance = currentBalance + amount;
+                    } else if (type === 'withdraw') {
+                        newBalance = currentBalance - amount;
+
+                        // CRITICAL CHECK: Firestore transaction ensures this is the absolute latest balance
+                        if (newBalance < 0) {
+                            throw new Error(`Insufficient Funds: Attempted to withdraw ${formatBVN(amount)}, but account balance is only ${formatBVN(currentBalance)}.`);
                         }
                     }
-                    
-                    // Debit the sender's account in the ledger
-                    const newBalance = isAdmin ? currentBalance : currentBalance - totalCost;
-                    
-                    transaction.update(senderLedgerRef, { 
-                        balance: newBalance,
-                        lastTransaction: Date.now()
-                    });
 
-                    // We also need to ensure the recipient's ledger is created if it doesn't exist
-                    const recipientLedgerRef = getUserLedgerDocRef(recipient);
-                    const recipientDoc = await transaction.get(recipientLedgerRef);
-                    
-                    if (!recipientDoc.exists) {
-                         transaction.set(recipientLedgerRef, {
-                            uid: recipient,
-                            name: `User ${recipient.substring(0, 4)}`,
-                            balance: amount,
-                            isAdmin: false,
-                            lastTransaction: Date.now()
-                        });
-                    } else {
-                        // Credit the recipient's account in the ledger
-                        const recipientBalance = recipientDoc.data().balance || 0.00;
-                        const newRecipientBalance = recipientBalance + amount;
-                        transaction.update(recipientLedgerRef, { 
-                            balance: newRecipientBalance,
-                            lastTransaction: Date.now()
-                        });
-                    }
+                    // Perform the update within the transaction
+                    transaction.update(accountDocRef, { balance: parseFloat(newBalance.toFixed(2)) });
+                });
 
-                }); // --- ATOMIC TRANSACTION END ---
-
-                // If the transaction succeeded, write the block to the chain (non-atomic part)
-                const txs = [
-                    createTransaction(currentUID, recipient, amount),
-                    createTransaction(currentUID, BURN_ADDRESS, TRANSACTION_FEE, 0.00, true)
-                ];
-                const newBlock = createBlock(txs);
-                await addBlockToChain(newBlock);
-
-                recipientInput.value = '';
-                amountInput.value = '';
-                updateSubmitButtonText();
-                showMessage(`Payment of ${formatCurrency(amount)} (${formatNaira(amount)}) successful! Block added.`, 'success');
-
+                transactionAmountEl.value = ''; // Clear input on success
+                setLoading(false);
+                const actionText = type === 'deposit' ? 'Deposited' : 'Withdrew';
+                displayMessage(transactionFeedbackEl, `${actionText} ${formatBVN(amount)} successfully! New balance will update shortly.`, 'success');
+            
             } catch (error) {
                 console.error("Transaction failed:", error);
-                let message = 'Transaction failed. Please try again.';
+
+                let displayMessageText = "Transaction failed. Please try again.";
+                
                 if (error.message.includes("Insufficient Funds")) {
-                    message = error.message;
+                    displayMessageText = error.message; // Use the specific error message
+                } else if (error instanceof Error) {
+                    displayMessageText = `Transaction error: ${error.message}`;
+                } else {
+                    displayMessageText = error;
                 }
-                showMessage(message, 'error');
-            } finally {
+                
                 setLoading(false);
+                displayMessage(errorMessageEl, displayMessageText, 'error');
             }
-        };
+        }
 
-        const handleInvoiceRequest = async (payerUid, amount) => {
-            setLoading(true);
 
-            const invoiceCollectionRef = collection(DB, PUBLIC_DATA_PATH, INVOICES_COLLECTION);
-            
-            if (payerUid === currentUID) {
-                showMessage("Error: Cannot request an invoice from yourself.");
-                setLoading(false);
-                return;
-            }
-
+        // --- Initialization Function ---
+        async function initializeBitVen() {
             try {
-                await addDoc(invoiceCollectionRef, {
-                    issuerUid: currentUID,
-                    payerUid: payerUid,
-                    amount: parseFloat(amount),
-                    timestamp: Date.now(),
-                    status: 'pending'
-                });
-                recipientInput.value = '';
-                amountInput.value = '';
-                updateSubmitButtonText();
-                setLoading(false);
-                showMessage(`Invoice of ${formatCurrency(amount)} (${formatNaira(amount)}) successfully requested from ${payerUid}.`, 'success');
-            } catch (error) {
-                console.error("Error creating invoice:", error);
-                setLoading(false);
-                showMessage(`Invoice error: Could not create request. ${error.message}`);
-            }
-        };
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 1. Authenticate User
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
 
-        const payInvoice = async (invoiceId, payerUid, issuerUid, amount) => {
-            if (payerUid !== currentUID) {
-                showMessage("Error: You are not the designated payer for this invoice.");
-                return;
-            }
+                // 2. Set up Auth State Listener
+                onAuthStateChanged(auth, async (user) => {
+                    loadingStateEl.style.display = 'none';
+                    if (user) {
+                        userId = user.uid;
+                        const userEmail = user.email || '';
+                        
+                        isAdmin = userEmail === ADMIN_EMAIL;
+                        
+                        // Seed database before setting up views
+                        await seedDatabase(userId, userEmail);
 
-            setLoading(true);
-            const totalCost = amount + TRANSACTION_FEE;
-            const payerLedgerRef = getUserLedgerDocRef(payerUid);
-            const issuerLedgerRef = getUserLedgerDocRef(issuerUid);
+                        authStatusEl.textContent = isAdmin 
+                            ? `Signed in as ADMIN: ${userEmail}` 
+                            : `Signed in as BVN User.`;
+                        authStatusEl.style.color = isAdmin ? '#28a745' : '#007bff';
 
-            try {
-                // --- ATOMIC TRANSACTION START (Invoice Payment) ---
-                await runTransaction(DB, async (transaction) => {
-                    const payerDoc = await transaction.get(payerLedgerRef);
-                    if (!payerDoc.exists) throw new Error("Payer wallet ledger not found.");
-                    
-                    // Admin check
-                    if (!isAdmin) {
-                        const currentBalance = payerDoc.data().balance || 0.00;
-                        if (currentBalance < totalCost) {
-                            throw new Error(`Insufficient Funds: Required to clear invoice: ${formatCurrency(totalCost)}.`);
+                        if (isAdmin) {
+                            setupAdminView(userId);
+                        } else {
+                            setupUserView(userId, userEmail);
                         }
-                        // Debit payer's account
-                        transaction.update(payerLedgerRef, { 
-                            balance: currentBalance - totalCost,
-                            lastTransaction: Date.now()
-                        });
-                    }
-
-                    // Credit issuer's account
-                    const issuerDoc = await transaction.get(issuerLedgerRef);
-                    if (issuerDoc.exists) {
-                        const issuerBalance = issuerDoc.data().balance || 0.00;
-                        transaction.update(issuerLedgerRef, { 
-                            balance: issuerBalance + amount,
-                            lastTransaction: Date.now()
-                        });
                     } else {
-                        // If issuer doesn't have a ledger yet, create it and set balance
-                         transaction.set(issuerLedgerRef, {
-                            uid: issuerUid,
-                            name: `User ${issuerUid.substring(0, 4)}`,
-                            balance: amount,
-                            isAdmin: false,
-                            lastTransaction: Date.now()
-                        });
+                        authStatusEl.textContent = 'Authentication required.';
+                        authStatusEl.style.color = '#dc3545';
+                        userViewEl.style.display = 'none';
+                        adminViewEl.style.display = 'none';
                     }
-                    
-                    // Delete the invoice
-                    const invoiceDocRef = doc(DB, PUBLIC_DATA_PATH, INVOICES_COLLECTION, invoiceId);
-                    transaction.delete(invoiceDocRef);
+                });
 
-                }); // --- ATOMIC TRANSACTION END ---
-
-                // If transaction succeeded, write the block to the chain
-                const txs = [
-                    createTransaction(payerUid, issuerUid, amount),
-                    createTransaction(payerUid, BURN_ADDRESS, TRANSACTION_FEE, 0.00, true)
-                ];
-                const newBlock = createBlock(txs);
-                await addBlockToChain(newBlock);
-
-                showMessage(`Invoice ${invoiceId.substring(0, 8)} cleared successfully!`, 'success');
             } catch (error) {
-                console.error("Error clearing invoice batch:", error);
-                let message = 'Payment failed. Please try again.';
-                if (error.message.includes("Insufficient Funds")) {
-                    message = error.message;
-                }
-                showMessage(message, 'error');
-            } finally {
-                setLoading(false);
+                console.error("Initialization Error:", error);
+                loadingStateEl.style.display = 'none';
+                authStatusEl.textContent = `CRITICAL ERROR: ${error.message}`;
+                authStatusEl.style.color = '#dc3545';
             }
-        };
+        }
 
-        // --- Real-time Listeners ---
-
-        const startBlockchainListener = () => {
-            const blockCollectionRef = collection(DB, PUBLIC_DATA_PATH, BLOCKCHAIN_COLLECTION);
-            // This listener ONLY updates the visual history
-            onSnapshot(blockCollectionRef, (snapshot) => {
-                const newChain = [];
-                snapshot.forEach(doc => {
-                    newChain.push(doc.data());
-                });
-
-                newChain.sort((a, b) => a.timestamp - b.timestamp);
-                chain = newChain;
-                renderBlockchainHistory();
-            }, (error) => {
-                console.error("Blockchain Listener Error:", error);
-            });
-        };
-
-        const startInvoicesListener = () => {
-            const invoicesContainer = document.getElementById('pending-invoices');
-            const noInvoicesEl = document.getElementById('no-invoices');
-            
-            if (!currentUID || !invoicesContainer || !noInvoicesEl) return;
-
-            const invoiceCollectionRef = collection(DB, PUBLIC_DATA_PATH, INVOICES_COLLECTION);
-            const q = query(invoiceCollectionRef, where("payerUid", "==", currentUID));
-
-            onSnapshot(q, (snapshot) => {
-                invoicesContainer.innerHTML = '';
-                
-                if (snapshot.empty) {
-                    if (noInvoicesEl) noInvoicesEl.style.display = 'block';
-                    return;
-                }
-                if (noInvoicesEl) noInvoicesEl.style.display = 'none';
-
-                snapshot.forEach(doc => {
-                    const invoice = doc.data();
-                    const invoiceId = doc.id;
-                    
-                    const invoiceEl = document.createElement('div');
-                    invoiceEl.className = 'invoice-item';
-                    
-                    const copyUid = (e) => {
-                        e.stopPropagation();
-                        const tempInput = document.createElement('textarea');
-                        tempInput.value = invoice.issuerUid;
-                        document.body.appendChild(tempInput);
-                        tempInput.select();
-                        try {
-                            document.execCommand('copy');
-                            showMessage(`Issuer ID ${invoice.issuerUid.substring(0, 8)}... copied!`, 'success');
-                        } catch (err) {
-                            showMessage('Could not copy text.', 'error');
-                        }
-                        document.body.removeChild(tempInput);
-                    };
-
-                    invoiceEl.innerHTML = `
-                        <div>
-                            <p style="font-size: 0.875rem; color: #4b5563;">Request from <code style="font-size: 0.75rem; font-family: monospace; color: #7f1d1d; cursor: pointer;">${invoice.issuerUid.substring(0, 10)}...</code></p>
-                            <p class="amount">${formatCurrency(invoice.amount)} 
-                                <span style="font-size: 0.9rem; font-weight: 400; color: #7f1d1d;">(${formatNaira(invoice.amount)})</span>
-                            </p>
-                        </div>
-                        <button class="btn-base btn-primary pay-btn"
-                            data-id="${invoiceId}"
-                            data-payer="${invoice.payerUid}"
-                            data-issuer="${invoice.issuerUid}"
-                            data-amount="${invoice.amount}">
-                            Pay Now
-                        </button>
-                    `;
-                    
-                    const issuerCodeElement = invoiceEl.querySelector('code');
-                    if (issuerCodeElement) {
-                        issuerCodeElement.addEventListener('click', copyUid);
-                    }
-                    
-                    invoicesContainer.appendChild(invoiceEl);
-                });
-
-                invoicesContainer.querySelectorAll('.pay-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const { id, payer, issuer, amount } = e.currentTarget.dataset;
-                        payInvoice(id, payer, issuer, parseFloat(amount));
-                    });
-                });
-
-            }, (error) => {
-                console.error("Invoice Listener Error:", error);
-                if (noInvoicesEl) {
-                    noInvoicesEl.textContent = `Invoice Listener Error: ${error.message}`;
-                    if (noInvoicesEl.style) noInvoicesEl.style.display = 'block';
-                }
-            });
-        };
-
-        const startUserProfilesListener = () => {
-            const profileCollectionRef = collection(DB, PUBLIC_DATA_PATH, USER_PROFILES_COLLECTION);
-            onSnapshot(profileCollectionRef, (snapshot) => {
-                const directoryEl = document.getElementById('user-directory');
-                if (!directoryEl) return;
-                
-                directoryEl.innerHTML = '';
-                
-                const currentUsers = [];
-
-                snapshot.forEach(doc => {
-                    currentUsers.push(doc.data());
-                });
-
-                currentUsers.sort((a, b) => a.uid.localeCompare(b.uid)).forEach(user => {
-                    const userEl = document.createElement('div');
-                    userEl.className = 'directory-item';
-                    userEl.innerHTML = `
-                        <p class="directory-item-name" title="${user.name}">${user.name}</p>
-                        <code class="directory-item-uid" title="${user.uid}">${user.uid}</code>
-                    `;
-                    userEl.addEventListener('click', () => {
-                        recipientInput.value = user.uid;
-                        showMessage(`Recipient set to User ${user.uid.substring(0, 4)}...`, 'success');
-                    });
-                    directoryEl.appendChild(userEl);
-                });
-
-                if (currentUsers.length === 0) {
-                     directoryEl.innerHTML = `<p style="color: #6b7280; font-size: 0.875rem; grid-column: 1 / -1;">No active users in the directory.</p>`;
-                }
-
-            }, (error) => {
-                console.error("User Profiles Listener Error:", error);
-                const directoryEl = document.getElementById('user-directory');
-                if (directoryEl) {
-                    directoryEl.innerHTML = `<p style="color: #dc2626; grid-column: 1 / -1;">Error loading users: ${error.message}</p>`;
-                }
-            });
-        };
-
-        // --- Rendering ---
-
-        const renderBlockchainHistory = () => {
-            const historyEl = document.getElementById('blockchain-history');
-            const noBlocksEl = document.getElementById('no-blocks');
-            const chainLengthEl = document.getElementById('chain-length');
-            
-            if (!historyEl || !noBlocksEl || !chainLengthEl) return;
-
-            historyEl.innerHTML = '';
-            chainLengthEl.textContent = `Blocks: ${chain.length}`;
-
-            if (chain.length === 0) {
-                if (noBlocksEl.style) noBlocksEl.style.display = 'block';
-                return;
-            }
-            if (noBlocksEl.style) noBlocksEl.style.display = 'none';
-
-            chain.slice().reverse().forEach((block, index) => {
-                const blockHeight = chain.length - index;
-
-                const blockEl = document.createElement('div');
-                blockEl.className = 'history-item';
-                
-                let txListHTML = '';
-                block.transactions.forEach(tx => {
-                    let type, colorStyle, detailText;
-                    
-                    const txAmount = tx.amount + tx.fee;
-                    const amountDisplay = formatCurrency(txAmount);
-                    const ngnDisplay = formatNaira(txAmount);
-                    const txId = tx.id.substring(0, 8);
-
-                    if (tx.isFeeTransaction) {
-                        type = 'FEE BURN 🔥';
-                        colorStyle = 'color: #ca8a04;'; /* Amber */
-                        detailText = `<span style="font-family: monospace; font-size: 0.75rem;">Burned to ${BURN_ADDRESS.substring(0, 10)}...</span>`;
-                    } else if (tx.from === currentUID) {
-                        type = 'SENT 💸';
-                        colorStyle = 'color: #dc2626;'; /* Red */
-                        detailText = `<span style="font-family: monospace; font-size: 0.75rem;">To: ${tx.to}</span>`;
-                    } else if (tx.to === currentUID) {
-                        type = 'RECEIVED 💰';
-                        colorStyle = 'color: #059669;'; /* Green */
-                        detailText = `<span style="font-family: monospace; font-size: 0.75rem;">From: ${tx.from}</span>`;
-                    } else {
-                        type = 'EXTERNAL 🔗';
-                        colorStyle = 'color: #6b7280;';
-                        detailText = `<span style="font-family: monospace; font-size: 0.75rem;">Tx ID: ${txId}</span>`;
-                    }
-
-                    txListHTML += `
-                        <li style="${colorStyle}">
-                            <div class="tx-details">
-                                <span style="font-weight: 700;">${type}</span><br>
-                                ${detailText}
-                            </div>
-                            <span class="tx-amount">${amountDisplay}<br>
-                                <span style="font-size: 0.75rem; font-weight: 500; color: #6b7280;">${ngnDisplay}</span>
-                            </span>
-                        </li>
-                    `;
-                });
-
-                blockEl.innerHTML = `
-                    <div class="history-header">
-                        <p>Block #${blockHeight}</p>
-                        <p style="font-size: 0.75rem; font-
+        window.onload = initializeBitVen;
+    </script>
+</body>
+</html>
