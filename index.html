@@ -192,14 +192,38 @@
       height: 200px;
       position: relative;
       margin-top: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 15px;
+      overflow: hidden;
+    }
+
+    .chart-svg {
+      width: 100%;
+      height: 100%;
     }
 
     .chart-line {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
+      fill: none;
+      stroke: #4ade80;
+      stroke-width: 2;
+      filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.5));
+    }
+
+    .chart-area {
+      fill: url(#chartGradient);
+      opacity: 0.3;
+    }
+
+    .chart-grid {
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 1;
+    }
+
+    .chart-label {
+      fill: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      font-family: inherit;
     }
 
     /* Transfer Form */
@@ -490,6 +514,260 @@
       messagingSenderId: "511584242303",
       appId: "1:511584242303:web:bdfeac7801c4d17b254d4a"
     };
+
+    /*
+    ========================================
+    🔒 FIRESTORE SECURITY RULES FOR BITVEN
+    ========================================
+    
+    📋 COPY THESE RULES TO FIREBASE CONSOLE:
+    1. Go to Firebase Console → Firestore Database → Rules tab
+    2. Copy everything from "rules_version = '2';" to the final closing "}"
+    3. Paste and publish the rules
+    
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        
+        // Helper functions for validation and permissions
+        function isAuthenticated() {
+          return request.auth != null;
+        }
+        
+        function isOwner(userId) {
+          return request.auth.uid == userId;
+        }
+        
+        function isAdmin() {
+          return isAuthenticated() && 
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        }
+        
+        function isValidEmail(email) {
+          return email is string && email.matches('.*@.*\\..*');
+        }
+        
+        function isValidBalance(balance) {
+          return balance is number && balance >= 0 && balance <= 1000000;
+        }
+        
+        function isValidAmount(amount) {
+          return amount is number && amount > 0 && amount <= 10000;
+        }
+        
+        function isValidPrice(price) {
+          return price is number && price > 0 && price <= 1000000;
+        }
+        
+        // Users collection - User profiles and balances
+        match /users/{userId} {
+          // Read: Users can read their own profile + others for transfers/leaderboard
+          allow read: if isAuthenticated();
+          
+          // Create: Only during initial signup with proper structure
+          allow create: if isOwner(userId) && 
+                           isValidUserData(request.resource.data) &&
+                           request.resource.data.balance_bvn == 0 &&
+                           request.resource.data.net_worth == 0 &&
+                           request.resource.data.role in ['user', 'admin'] &&
+                           request.resource.data.frozen == false;
+          
+          // Update: Users can update their own profile (limited fields)
+          // Admins can update any user (including balance changes)
+          allow update: if (isOwner(userId) && isValidUserUpdate(request.resource.data)) ||
+                           (isAdmin() && isValidAdminUserUpdate(request.resource.data));
+          
+          // Delete: Only admins can delete users
+          allow delete: if isAdmin();
+          
+          function isValidUserData(data) {
+            return data.keys().hasAll(['displayName', 'email', 'balance_bvn', 'net_worth', 'avatar', 'frozen', 'role', 'streak']) &&
+                   data.displayName is string &&
+                   isValidEmail(data.email) &&
+                   isValidBalance(data.balance_bvn) &&
+                   data.net_worth is number &&
+                   data.avatar is string &&
+                   data.frozen is bool &&
+                   data.role in ['user', 'admin'] &&
+                   data.streak is number && data.streak >= 0;
+          }
+          
+          function isValidUserUpdate(data) {
+            let allowedFields = ['displayName', 'avatar', 'lastLogin', 'streak'];
+            return data.diff(resource.data).affectedKeys().hasOnly(allowedFields) &&
+                   (!data.diff(resource.data).affectedKeys().hasAny(['displayName']) || data.displayName is string) &&
+                   (!data.diff(resource.data).affectedKeys().hasAny(['avatar']) || data.avatar is string);
+          }
+          
+          function isValidAdminUserUpdate(data) {
+            let allowedFields = ['displayName', 'avatar', 'balance_bvn', 'net_worth', 'frozen', 'role', 'lastLogin', 'streak'];
+            return data.diff(resource.data).affectedKeys().hasOnly(allowedFields) &&
+                   (!data.diff(resource.data).affectedKeys().hasAny(['balance_bvn']) || isValidBalance(data.balance_bvn)) &&
+                   (!data.diff(resource.data).affectedKeys().hasAny(['net_worth']) || data.net_worth is number) &&
+                   (!data.diff(resource.data).affectedKeys().hasAny(['frozen']) || data.frozen is bool) &&
+                   (!data.diff(resource.data).affectedKeys().hasAny(['role']) || data.role in ['user', 'admin']);
+          }
+        }
+        
+        // Ledger collection - Immutable transaction records
+        match /ledger/{transactionId} {
+          // Read: Users can read transactions they're involved in
+          // Admins can read all transactions
+          allow read: if isAuthenticated() && 
+                         (resource.data.from == request.auth.uid || 
+                          resource.data.to == request.auth.uid || 
+                          isAdmin());
+          
+          // Create: Only authenticated users can create valid transactions
+          // Additional validation should be done in client-side transaction logic
+          allow create: if isAuthenticated() && 
+                           isValidTransaction(request.resource.data) &&
+                           (request.resource.data.from == request.auth.uid || 
+                            request.resource.data.from == 'system' ||
+                            isAdmin());
+          
+          // Update/Delete: Transactions are immutable (no updates or deletes allowed)
+          allow update, delete: if false;
+          
+          function isValidTransaction(data) {
+            return data.keys().hasAll(['txId', 'type', 'from', 'to', 'amount', 'timestamp']) &&
+                   data.txId is string &&
+                   data.type in ['transfer', 'mint', 'burn', 'streak_reward'] &&
+                   (data.from is string || data.from == 'system') &&
+                   (data.to is string || data.to == 'system') &&
+                   isValidAmount(data.amount) &&
+                   data.timestamp is timestamp &&
+                   data.from != data.to;
+          }
+        }
+        
+        // Price feed - Current BVN price
+        match /price_feed/current {
+          // Read: Anyone authenticated can read current price
+          allow read: if isAuthenticated();
+          
+          // Write: Only admins can update price
+          allow write: if isAdmin() && 
+                          isValidPrice(request.resource.data.price_ngn) &&
+                          request.resource.data.updatedBy == request.auth.uid &&
+                          request.resource.data.timestamp is timestamp;
+        }
+        
+        // Price feed history - Historical price data
+        match /price_feed_history/{historyId} {
+          // Read: Anyone authenticated can read price history
+          allow read: if isAuthenticated();
+          
+          // Create: Only admins can create price history entries
+          allow create: if isAdmin() && 
+                           isValidPrice(request.resource.data.price_ngn) &&
+                           request.resource.data.updatedBy == request.auth.uid &&
+                           request.resource.data.timestamp is timestamp;
+          
+          // Update/Delete: Price history is immutable
+          allow update, delete: if false;
+        }
+        
+        // Admin audit log - Track admin actions
+        match /admin_audit/{auditId} {
+          // Read: Only admins can read audit logs
+          allow read: if isAdmin();
+          
+          // Create: Only admins can create audit entries for their own actions
+          allow create: if isAdmin() && 
+                           request.resource.data.adminId == request.auth.uid &&
+                           request.resource.data.action is string &&
+                           request.resource.data.timestamp is timestamp;
+          
+          // Update/Delete: Audit logs are immutable
+          allow update, delete: if false;
+        }
+        
+        // System configuration (optional - for app settings)
+        match /system_config/{configId} {
+          // Read: Anyone authenticated can read system config
+          allow read: if isAuthenticated();
+          
+          // Write: Only admins can modify system configuration
+          allow write: if isAdmin();
+        }
+        
+        // User sessions (optional - for tracking active sessions)
+        match /user_sessions/{sessionId} {
+          // Read/Write: Users can manage their own sessions
+          allow read, write: if isAuthenticated() && 
+                                resource.data.userId == request.auth.uid;
+          
+          // Admin read: Admins can read all sessions for monitoring
+          allow read: if isAdmin();
+        }
+        
+        // Notifications (optional - for user notifications)
+        match /notifications/{notificationId} {
+          // Read: Users can read their own notifications
+          allow read: if isAuthenticated() && 
+                         resource.data.userId == request.auth.uid;
+          
+          // Create: System or admins can create notifications
+          allow create: if isAdmin() || 
+                           (isAuthenticated() && request.resource.data.type == 'system');
+          
+          // Update: Users can mark their notifications as read
+          allow update: if isAuthenticated() && 
+                           resource.data.userId == request.auth.uid &&
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+          
+          // Delete: Users can delete their own notifications
+          allow delete: if isAuthenticated() && 
+                           resource.data.userId == request.auth.uid;
+        }
+        
+        // Deny all other collections by default
+        match /{document=**} {
+          allow read, write: if false;
+        }
+      }
+    }
+    
+    ========================================
+    ADDITIONAL SECURITY RECOMMENDATIONS:
+    ========================================
+    
+    1. AUTHENTICATION RULES:
+       - Enable Google Sign-In only (disable anonymous auth)
+       - Set up proper OAuth consent screen
+       - Limit authorized domains to your production domain
+    
+    2. FIRESTORE SETTINGS:
+       - Enable App Check for additional security
+       - Set up proper indexes for query performance
+       - Configure backup schedules for data protection
+    
+    3. ADMIN ACCOUNT SECURITY:
+       - Use strong, unique passwords for admin accounts
+       - Enable 2FA on all admin Google accounts
+       - Regularly audit admin permissions
+       - Consider using service accounts for automated tasks
+    
+    4. MONITORING & ALERTS:
+       - Set up Firebase monitoring for unusual activity
+       - Configure alerts for failed authentication attempts
+       - Monitor transaction volumes and patterns
+       - Set up budget alerts to prevent unexpected costs
+    
+    5. DATA VALIDATION:
+       - All monetary amounts are validated (positive, reasonable limits)
+       - Email addresses are properly formatted
+       - User roles are restricted to valid values
+       - Transaction types are limited to allowed operations
+    
+    6. RATE LIMITING:
+       - Consider implementing client-side rate limiting
+       - Use Firebase App Check to prevent abuse
+       - Monitor for suspicious transaction patterns
+    
+    ========================================
+    */
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -1049,7 +1327,7 @@
         return;
       }
 
-      if (amount > state.currentUser.balance_bvn) {
+      if (amount > state.currentUser.balance_bvn && !state.isAdmin) {
         showNotification('Insufficient balance', 'error');
         const failedTxData = {
           txId: 'FAILED_' + Date.now(),
@@ -1131,12 +1409,18 @@
           const senderData = senderDoc.data();
           const recipientDataFresh = recipientDocFresh.data();
 
-          // Validate sender balance again
-          if (senderData.balance_bvn < amount) {
+          // Validate sender balance again (admins have unlimited BVN)
+          if (senderData.balance_bvn < amount && !state.isAdmin) {
             throw new Error('Insufficient balance');
           }
 
-          newSenderBalance = senderData.balance_bvn - amount;
+          // For admins, allow unlimited transfers by minting if needed
+          if (state.isAdmin && senderData.balance_bvn < amount) {
+            newSenderBalance = amount; // Set balance to at least the transfer amount
+          } else {
+            newSenderBalance = senderData.balance_bvn - amount;
+          }
+          
           const newRecipientBalance = recipientDataFresh.balance_bvn + amount;
 
           // Update balances
@@ -1457,7 +1741,7 @@
             </div>
             <div class="user-info">
               ${state.currentUser.streak > 0 ? `<span class="streak-badge">🔥 ${state.currentUser.streak} day streak</span>` : ''}
-              <div class="avatar">${state.currentUser.photoURL}</div>
+              <div class="avatar">${state.currentUser.avatar || '👤'}</div>
               <span>${state.currentUser.displayName}</span>
               <button class="btn" onclick="logout()">Logout</button>
             </div>
@@ -1501,6 +1785,16 @@
               <span class="price-change ${priceChange >= 0 ? 'price-up' : 'price-down'}">
                 ${priceChange >= 0 ? '↑' : '↓'} ${Math.abs(priceChange)}%
               </span>
+              <div class="chart-container">
+                <svg class="chart-svg" id="priceChart">
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:0.8" />
+                      <stop offset="100%" style="stop-color:#4ade80;stop-opacity:0.1" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
             </div>
 
             <div class="card">
@@ -1598,6 +1892,92 @@
       `;
     }
 
+    // Chart rendering functions
+    function generatePriceHistory() {
+      // Generate realistic price history for demo
+      const now = Date.now();
+      const history = [];
+      const basePrice = state.currentPrice;
+      
+      for (let i = 29; i >= 0; i--) {
+        const timestamp = now - (i * 24 * 60 * 60 * 1000); // 30 days back
+        const variation = (Math.random() - 0.5) * 0.1; // ±10% variation
+        const price = Math.max(100, basePrice * (1 + variation * (i / 30))); // Gradual trend
+        history.push({ timestamp, price });
+      }
+      
+      return history;
+    }
+
+    function renderPriceChart() {
+      const chartSvg = document.getElementById('priceChart');
+      if (!chartSvg) return;
+
+      const history = generatePriceHistory();
+      const width = 300;
+      const height = 150;
+      const padding = 20;
+
+      // Clear existing content
+      while (chartSvg.firstChild && chartSvg.firstChild.tagName !== 'defs') {
+        chartSvg.removeChild(chartSvg.firstChild);
+      }
+
+      // Set viewBox
+      chartSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+      const prices = history.map(h => h.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceRange = maxPrice - minPrice || 1;
+
+      // Create grid lines
+      for (let i = 0; i <= 4; i++) {
+        const y = padding + (i * (height - 2 * padding)) / 4;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', padding);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', width - padding);
+        line.setAttribute('y2', y);
+        line.setAttribute('class', 'chart-grid');
+        chartSvg.appendChild(line);
+      }
+
+      // Create price line
+      const pathData = history.map((point, index) => {
+        const x = padding + (index * (width - 2 * padding)) / (history.length - 1);
+        const y = height - padding - ((point.price - minPrice) / priceRange) * (height - 2 * padding);
+        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+      }).join(' ');
+
+      const priceLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      priceLine.setAttribute('d', pathData);
+      priceLine.setAttribute('class', 'chart-line');
+      chartSvg.appendChild(priceLine);
+
+      // Create area fill
+      const areaData = pathData + ` L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
+      const priceArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      priceArea.setAttribute('d', areaData);
+      priceArea.setAttribute('class', 'chart-area');
+      chartSvg.appendChild(priceArea);
+
+      // Add price labels
+      const minLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      minLabel.setAttribute('x', padding);
+      minLabel.setAttribute('y', height - padding + 15);
+      minLabel.setAttribute('class', 'chart-label');
+      minLabel.textContent = `₦${Math.round(minPrice).toLocaleString()}`;
+      chartSvg.appendChild(minLabel);
+
+      const maxLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      maxLabel.setAttribute('x', padding);
+      maxLabel.setAttribute('y', padding - 5);
+      maxLabel.setAttribute('class', 'chart-label');
+      maxLabel.textContent = `₦${Math.round(maxPrice).toLocaleString()}`;
+      chartSvg.appendChild(maxLabel);
+    }
+
     // Real-time listeners
     function setupRealtimeListeners() {
       // Listen to current price
@@ -1606,6 +1986,7 @@
           const data = doc.data();
           state.currentPrice = data.price_ngn;
           renderApp();
+          setTimeout(renderPriceChart, 100); // Render chart after DOM update
         }
       });
 
@@ -1959,6 +2340,7 @@
           
           setupRealtimeListeners();
           renderApp();
+          setTimeout(renderPriceChart, 100); // Render chart after DOM update
         }
       } else {
         // User is signed out
@@ -2104,5 +2486,5 @@
 
     init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99b69fa7823f218d',t:'MTc2MjYyMTE5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99b6ade9c0a9218d',t:'MTc2MjYyMTc3OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
